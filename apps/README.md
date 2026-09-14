@@ -1,3 +1,9 @@
 # apps
 
-业务代码从实施计划 **W1（09-15 起）** 再写。今日仅占位，保证目录会进 Git。
+| 目录 | 说明 |
+|------|------|
+| `server` | Spring Boot 3 / JDK17 字节码：登录、RBAC、项目、导入、模型配置 |
+| `web` | Vue3 + Element Plus：`/login` `/app` `/admin` |
+| `ai-worker` | W2 再写 FastAPI |
+
+本地：根目录 `docker compose up -d` → 启动 server → `pnpm -C apps/web dev`。

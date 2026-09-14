@@ -1,0 +1,64 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: lumiinsight-server
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/lumiinsight?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${MYSQL_USER:lumiinsight}
+    password: ${MYSQL_PASSWORD:lumiinsight}
+    hikari:
+      maximum-pool-size: 10
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 55MB
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    encoding: UTF-8
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+lumiinsight:
+  jwt:
+    secret: ${JWT_SECRET:lumiinsight-dev-only-change-me-please-32b}
+    expire-hours: ${JWT_EXPIRE_HOURS:24}
+  crypto:
+    aes-key: ${LUMI_AES_KEY:lumiinsight-dev-aes-key-32bytes!!}
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000}
+    access-key: ${MINIO_ACCESS_KEY:lumiinsight}
+    secret-key: ${MINIO_SECRET_KEY:lumiinsight-minio}
+    bucket: ${MINIO_BUCKET:lumiinsight}
+  cors:
+    origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+
+logging:
+  level:
+    com.lumiinsight: INFO
+    org.springframework.security: WARN

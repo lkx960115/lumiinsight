@@ -5,12 +5,13 @@
 ## 必读顺序
 
 1. 本文件  
-2. [D1 架构基线](D1_ARCHITECTURE_BASELINE.md)  
-3. [D2 边界与模块地图](D2_BOUNDARY_MODULE_MAP.md)  
-4. [D3 可注入规则](D3_INJECTABLE_RULES.md) + [LOCAL_RULES](LOCAL_RULES.md)  
-5. 改业务语义时：[DOMAIN_LUMI.md](DOMAIN_LUMI.md)、[D4](D4_TACIT_KNOWLEDGE.md)  
-6. 改链路时：[D5](D5_DEPENDENCY_GRAPH.md)、[D6](D6_REPO_INDEX.md)  
-7. 排期：[三周实施计划](../三周实施计划.md)
+2. [代码进度（中断从这接）](CODE_PROGRESS.md)  
+3. [D1 架构基线](D1_ARCHITECTURE_BASELINE.md)  
+4. [D2 边界与模块地图](D2_BOUNDARY_MODULE_MAP.md)  
+5. [D3 可注入规则](D3_INJECTABLE_RULES.md) + [LOCAL_RULES](LOCAL_RULES.md)  
+6. 改业务语义时：[DOMAIN_LUMI.md](DOMAIN_LUMI.md)、[D4](D4_TACIT_KNOWLEDGE.md)  
+7. 改链路时：[D5](D5_DEPENDENCY_GRAPH.md)、[D6](D6_REPO_INDEX.md)  
+8. 排期：[三周实施计划](../三周实施计划.md)
 
 ## 六维包
 
@@ -32,7 +33,7 @@
 
 ## 当前仓库状态
 
-**2026-09-14：仅文档，无业务代码。** 未确认「开始写代码」前禁止生成 `apps/*` 实现。
+**2026-09-14：W1 业务代码已写入 `apps/server` + `apps/web`。** 后续改动先读 [CODE_PROGRESS.md](CODE_PROGRESS.md)。未确认前仍不要把四平台空适配器改成爬虫。
 
 ## 高风险（须打标）
 

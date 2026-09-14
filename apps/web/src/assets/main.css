@@ -1,0 +1,27 @@
+:root {
+  --ink: #16302b;
+  --paper: #f4efe6;
+  --accent: #1f6f5b;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Source Han Sans SC", "PingFang SC", "Noto Sans SC", sans-serif;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 13px;
+}
