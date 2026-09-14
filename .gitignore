@@ -1,0 +1,42 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+**/application-local.yml
+**/application-local.yaml
+
+# os / ide
+.DS_Store
+.idea/
+.vscode/
+*.iml
+.cursor/mcp.json
+
+# java
+target/
+*.class
+*.jar
+*.war
+.mvn/wrapper/maven-wrapper.jar
+
+# python
+__pycache__/
+.venv/
+venv/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# node
+node_modules/
+dist/
+.pnpm-store/
+
+# data / local runtime
+data/
+logs/
+tmp/
+*.log
