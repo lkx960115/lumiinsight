@@ -1,5 +1,6 @@
 # 本机若已有其它容器占用端口，只改宿主机映射，容器内端口不变。
 # mysql:5.7 已占 3306 时，灯鉴 MySQL 8 映射 3307，禁止复用 5.7。
+# 本机已有 Redis 占用 6379 时，灯鉴 Redis 映射 16379。
 # 默认镜像走 DaoCloud，避免直连 Docker Hub（registry-1.docker.io）超时。
 # 能直连 Docker Hub 时，在 .env 把 *_IMAGE 改回官方名即可。
 
@@ -16,6 +17,13 @@ services:
     ports:
       - "${MYSQL_PORT:-3307}:3306"
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    security_opt:
+      - seccomp:unconfined
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
     volumes:
       - lumi-mysql-data:/var/lib/mysql
     healthcheck:
@@ -30,7 +38,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-16379}:6379"
     volumes:
       - lumi-redis-data:/data
     healthcheck:
@@ -43,6 +51,15 @@ services:
     image: ${QDRANT_IMAGE:-docker.m.daocloud.io/qdrant/qdrant:v1.12.4}
     container_name: lumi-qdrant
     restart: unless-stopped
+    environment:
+      MALLOC_CONF: background_thread:false,narenas:2
+    security_opt:
+      - seccomp:unconfined
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
     ports:
       - "${QDRANT_PORT:-6333}:6333"
       - "${QDRANT_GRPC_PORT:-6334}:6334"

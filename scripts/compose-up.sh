@@ -1,5 +1,6 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
+echo "灯鉴依赖启动脚本开始..."
 cd "$(dirname "$0")/.."
 
 if [[ -f .env ]]; then
@@ -15,9 +16,13 @@ qdrant_image="${QDRANT_IMAGE:-docker.m.daocloud.io/qdrant/qdrant:v1.12.4}"
 minio_image="${MINIO_IMAGE:-docker.m.daocloud.io/minio/minio:RELEASE.2024-10-13T13-34-11Z}"
 
 echo "拉取镜像（不走 BuildKit solve）..."
+echo "  [1/4] $mysql_image"
 docker pull "$mysql_image"
+echo "  [2/4] $redis_image"
 docker pull "$redis_image"
+echo "  [3/4] $qdrant_image"
 docker pull "$qdrant_image"
+echo "  [4/4] $minio_image"
 docker pull "$minio_image"
 
 if command -v docker-compose >/dev/null 2>&1; then

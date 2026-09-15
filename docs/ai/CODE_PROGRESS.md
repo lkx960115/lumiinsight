@@ -12,7 +12,7 @@
 ## 当前指针
 
 - **阶段：** W1 已交；W2D1 Worker 空清洗已交
-- **本机 Docker：** mysql:5.7 占 3306；Docker Hub 直连会 `Service Unavailable`。用 `./scripts/compose-up.sh`（DaoCloud 镜像 + `docker pull`，避免 experimental `docker compose` 的 dockerfile.v0）。
+- **本机 Docker：** mysql:5.7 占 3306、本机 Redis 占 6379；Docker Hub 直连会 `Service Unavailable`。用 `./scripts/compose-up.sh`（DaoCloud 镜像 + `docker pull`，避免 experimental `docker compose` 的 dockerfile.v0）。MySQL 映射 3307，Redis 映射 16379。Docker Desktop 需给 MySQL 8 / Qdrant 放开 seccomp，否则会无法建线程、反复重启。
 - **下一步：** 本机拉起 `lumi-*` 容器 → Java → Worker → Vue；然后 W2D2 真实清洗规则
 - **分支：** `dev`
 - **禁止：** 四平台爬虫、报告当事实输出、把 Key 写入仓库
@@ -27,7 +27,7 @@
 
 ## 本机怎么跑（避开已有容器）
 
-1. 复制 `.env.example` → `.env`（`MYSQL_PORT=3307`）
+1. 复制 `.env.example` → `.env`（`MYSQL_PORT=3307`，`REDIS_PORT=16379`）
 2. `./scripts/compose-up.sh`（国内镜像；不要直接 `docker compose up` 撞 Docker Hub）
 3. `mvn -f apps/server/pom.xml spring-boot:run`
 4. `cd apps/ai-worker && python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt && uvicorn app.main:app --port 8090`
