@@ -1,9 +1,11 @@
 # 本机若已有其它容器占用端口，只改宿主机映射，容器内端口不变。
-# 截图环境：mysql:5.7 已占 3306，minio 在 19001。灯鉴必须用独立 MySQL 8，禁止复用 5.7。
+# mysql:5.7 已占 3306 时，灯鉴 MySQL 8 映射 3307，禁止复用 5.7。
+# 默认镜像走 DaoCloud，避免直连 Docker Hub（registry-1.docker.io）超时。
+# 能直连 Docker Hub 时，在 .env 把 *_IMAGE 改回官方名即可。
 
 services:
   mysql:
-    image: mysql:8.0.40
+    image: ${MYSQL_IMAGE:-docker.m.daocloud.io/library/mysql:8.0}
     container_name: lumi-mysql
     restart: unless-stopped
     environment:
@@ -23,7 +25,7 @@ services:
       retries: 20
 
   redis:
-    image: redis:7.4-alpine
+    image: ${REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7-alpine}
     container_name: lumi-redis
     restart: unless-stopped
     command: redis-server --appendonly yes
@@ -38,7 +40,7 @@ services:
       retries: 10
 
   qdrant:
-    image: qdrant/qdrant:v1.12.4
+    image: ${QDRANT_IMAGE:-docker.m.daocloud.io/qdrant/qdrant:v1.12.4}
     container_name: lumi-qdrant
     restart: unless-stopped
     ports:
@@ -48,7 +50,7 @@ services:
       - lumi-qdrant-data:/qdrant/storage
 
   minio:
-    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    image: ${MINIO_IMAGE:-docker.m.daocloud.io/minio/minio:RELEASE.2024-10-13T13-34-11Z}
     container_name: lumi-minio
     restart: unless-stopped
     environment:

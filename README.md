@@ -20,8 +20,15 @@ AI 驱动的灯具全网评论采集与消费者洞察报告平台（参赛 / �
 
 本机若已有 **mysql:5.7 占用 3306**，不要把灯鉴接到那个库。Compose 默认把独立的 **MySQL 8** 映射到 **3307**（与现有 minio:19001 也不冲突）。
 
-1. 复制 `.env.example` → `.env`（不要提交）。  
-2. 根目录：`docker compose up -d`（会起 `lumi-mysql` / Redis / Qdrant / `lumi-minio`）。  
+1. `git pull`，复制 `.env.example` → `.env`（不要提交）。  
+2. **不要**直接 `docker compose up`（会打 Docker Hub，报 `dockerfile.v0` / Service Unavailable）。执行：
+
+   ```bash
+   chmod +x scripts/compose-up.sh
+   ./scripts/compose-up.sh
+   ```
+
+   镜像默认走 DaoCloud。若仍失败：Docker Desktop → Settings → Docker Engine 增加 `"registry-mirrors": ["https://docker.m.daocloud.io"]`，Apply & Restart 后再跑脚本。  
 3. 启动后端：`mvn -f apps/server/pom.xml spring-boot:run`。  
    首次启动日志会打印本地管理员账号密码（只一次，不要写进 README）。  
 4. 启动 Worker：`cd apps/ai-worker && python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt && uvicorn app.main:app --port 8090`。  

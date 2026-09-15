@@ -6,4 +6,4 @@
 | `web` | Vue3 工作台 `/app` 与管理端 `/admin` |
 | `ai-worker` | FastAPI：清洗空实现，端口 8090 |
 
-本地：`docker compose up -d`（MySQL 映射 3307）→ Java → Worker → `pnpm -C apps/web dev`。
+本地：`./scripts/compose-up.sh`（MySQL 映射 3307，国内镜像）→ Java → Worker → `pnpm -C apps/web dev`。
