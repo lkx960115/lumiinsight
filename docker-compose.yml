@@ -1,3 +1,6 @@
+# 本机若已有其它容器占用端口，只改宿主机映射，容器内端口不变。
+# 截图环境：mysql:5.7 已占 3306，minio 在 19001。灯鉴必须用独立 MySQL 8，禁止复用 5.7。
+
 services:
   mysql:
     image: mysql:8.0.40
@@ -9,12 +12,12 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-lumiinsight}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-lumiinsight-root}
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3307}:3306"
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
     volumes:
       - lumi-mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ulumiinsight", "-p${MYSQL_PASSWORD:-lumiinsight}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ulumiinsight", "-plumiinsight"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -25,7 +28,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - lumi-redis-data:/data
     healthcheck:
@@ -39,8 +42,8 @@ services:
     container_name: lumi-qdrant
     restart: unless-stopped
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
     volumes:
       - lumi-qdrant-data:/qdrant/storage
 
@@ -53,8 +56,8 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-lumiinsight-minio}
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - lumi-minio-data:/data
 

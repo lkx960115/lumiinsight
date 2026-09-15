@@ -5,6 +5,7 @@
         <h2>{{ project.name }}</h2>
         <p class="muted">{{ project.brand }} {{ project.mainModel }} · 评论 {{ project.reviewCount }} 条</p>
       </div>
+      <el-button v-permission="'pipeline:execute'" @click="triggerClean">触发清洗（空实现）</el-button>
       <el-button @click="router.push('/app/projects')">返回列表</el-button>
     </div>
 
@@ -25,6 +26,17 @@
             <el-button v-if="row.errorObjectKey" text @click="downloadErrors(row.id)">下载失败行</el-button>
           </template>
         </el-table-column>
+      </el-table>
+    </el-card>
+
+    <el-card class="block">
+      <template #header>分析流水线</template>
+      <p class="muted">W2：Java 调 Worker 空实现。请先启动 Worker（8090）。状态 PENDING → CLEANING → READY / FAILED。</p>
+      <el-table :data="pipeline.records" class="mt">
+        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column prop="type" label="类型" width="100" />
+        <el-table-column prop="status" label="状态" width="120" />
+        <el-table-column prop="message" label="说明" />
       </el-table>
     </el-card>
 
@@ -74,6 +86,7 @@ const router = useRouter()
 const id = Number(route.params.id)
 const project = ref<any>(null)
 const jobs = reactive({ records: [] as any[] })
+const pipeline = reactive({ records: [] as any[] })
 const reviews = reactive({ records: [] as any[], total: 0 })
 const platform = ref('')
 const keyword = ref('')
@@ -83,12 +96,18 @@ async function load() {
   const { data } = await http.get(`/projects/${id}`)
   project.value = data.data
   await loadJobs()
+  await loadPipeline()
   await loadReviews()
 }
 
 async function loadJobs() {
   const { data } = await http.get(`/projects/${id}/imports`)
   jobs.records = data.data.records
+}
+
+async function loadPipeline() {
+  const { data } = await http.get(`/projects/${id}/pipeline`)
+  pipeline.records = data.data.records
 }
 
 async function loadReviews() {
@@ -104,6 +123,12 @@ async function upload(opt: UploadRequestOptions) {
   form.append('file', opt.file)
   await http.post(`/projects/${id}/imports`, form)
   ElMessage.success('已提交导入任务')
+  setTimeout(load, 800)
+}
+
+async function triggerClean() {
+  await http.post(`/projects/${id}/pipeline/clean`)
+  ElMessage.success('已提交清洗任务')
   setTimeout(load, 800)
 }
 

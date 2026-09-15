@@ -5,7 +5,7 @@ spring:
   application:
     name: lumiinsight-server
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/lumiinsight?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3307}/lumiinsight?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     username: ${MYSQL_USER:lumiinsight}
     password: ${MYSQL_PASSWORD:lumiinsight}
     hikari:
@@ -69,6 +69,8 @@ lumiinsight:
   qdrant:
     host: ${QDRANT_HOST:127.0.0.1}
     port: ${QDRANT_PORT:6333}
+  worker:
+    base-url: ${WORKER_BASE_URL:http://127.0.0.1:8090}
 
 logging:
   level:

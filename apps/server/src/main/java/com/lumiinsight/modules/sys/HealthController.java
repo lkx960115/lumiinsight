@@ -2,6 +2,7 @@ package com.lumiinsight.modules.sys;
 
 import com.lumiinsight.common.api.ApiResult;
 import com.lumiinsight.infra.minio.ObjectStorage;
+import com.lumiinsight.modules.pipeline.WorkerClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,6 +22,7 @@ public class HealthController {
     private final JdbcTemplate jdbcTemplate;
     private final StringRedisTemplate redisTemplate;
     private final ObjectStorage objectStorage;
+    private final WorkerClient workerClient;
     private final String qdrantHost;
     private final int qdrantPort;
 
@@ -28,12 +30,14 @@ public class HealthController {
             JdbcTemplate jdbcTemplate,
             StringRedisTemplate redisTemplate,
             ObjectStorage objectStorage,
+            WorkerClient workerClient,
             @Value("${lumiinsight.qdrant.host:127.0.0.1}") String qdrantHost,
             @Value("${lumiinsight.qdrant.port:6333}") int qdrantPort
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.redisTemplate = redisTemplate;
         this.objectStorage = objectStorage;
+        this.workerClient = workerClient;
         this.qdrantHost = qdrantHost;
         this.qdrantPort = qdrantPort;
     }
@@ -46,6 +50,7 @@ public class HealthController {
         data.put("redis", pingRedis());
         data.put("qdrant", pingTcp(qdrantHost, qdrantPort));
         data.put("minio", objectStorage.ping() ? "up" : "down");
+        data.put("worker", workerClient.ping() ? "up" : "down");
         return ApiResult.ok(data);
     }
 

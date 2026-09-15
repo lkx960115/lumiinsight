@@ -29,4 +29,15 @@ public class InfraConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean(name = "pipelineExecutor")
+    public Executor pipelineExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("lumi-pipeline-");
+        executor.initialize();
+        return executor;
+    }
 }
