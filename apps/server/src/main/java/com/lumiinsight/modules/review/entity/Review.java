@@ -26,6 +26,8 @@ public class Review {
     private String sourceUrl;
     private String rawPayload;
     private String contentHash;
+    private String cleanTags;
+    private Integer counted;
     private LocalDateTime createdAt;
     @TableLogic
     private Integer deleted;

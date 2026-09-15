@@ -8,7 +8,7 @@ lumiinsight/
 ├── pnpm-workspace.yaml
 ├── apps/server/          Spring Boot 3.3 / 启动类 LumiInsightApplication
 ├── apps/web/             Vue3 + Vite + Element Plus
-├── apps/ai-worker/       FastAPI：/health、POST /v1/jobs/clean 空实现
+├── apps/ai-worker/       清洗：/health、POST /v1/jobs/clean
 ├── eval/fixtures/        sample-reviews.csv（120 条）
 └── docs/ai/CODE_PROGRESS.md
 ```
@@ -46,4 +46,4 @@ lumiinsight/
 `project` `project_member` `import_job` `review` `pipeline_job`  
 `llm_provider` `llm_model` `llm_route` `aspect_dict` `audit_log`
 
-Worker 路由：`GET /health`、`POST /v1/jobs/clean`（空实现）。
+Worker 路由：`GET /health`、`POST /v1/jobs/clean`（去重 / 广告 / 过短 / 脱敏）。

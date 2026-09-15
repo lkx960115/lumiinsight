@@ -17,4 +17,6 @@ public class ReviewView {
     private Integer likeCount;
     private String productName;
     private String sourceUrl;
+    private String cleanTags;
+    private Integer counted;
 }

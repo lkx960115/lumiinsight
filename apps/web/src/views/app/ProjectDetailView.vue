@@ -5,7 +5,7 @@
         <h2>{{ project.name }}</h2>
         <p class="muted">{{ project.brand }} {{ project.mainModel }} · 评论 {{ project.reviewCount }} 条</p>
       </div>
-      <el-button v-permission="'pipeline:execute'" @click="triggerClean">触发清洗（空实现）</el-button>
+      <el-button v-permission="'pipeline:execute'" type="primary" @click="triggerClean">触发清洗</el-button>
       <el-button @click="router.push('/app/projects')">返回列表</el-button>
     </div>
 
@@ -31,7 +31,7 @@
 
     <el-card class="block">
       <template #header>分析流水线</template>
-      <p class="muted">W2：Java 调 Worker 空实现。请先启动 Worker（8090）。状态 PENDING → CLEANING → READY / FAILED。</p>
+      <p class="muted">去重、广告、过短、手机号/地址脱敏。项目计数只含有效条；列表仍展示已标记条目。</p>
       <el-table :data="pipeline.records" class="mt">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="type" label="类型" width="100" />
@@ -41,7 +41,7 @@
     </el-card>
 
     <el-card class="block">
-      <template #header>评论列表（展示已脱敏）</template>
+      <template #header>评论列表</template>
       <el-form inline>
         <el-form-item>
           <el-select v-model="platform" clearable placeholder="平台" style="width: 140px" @change="loadReviews">
@@ -59,6 +59,14 @@
       <el-table :data="reviews.records">
         <el-table-column prop="platform" label="平台" width="120" />
         <el-table-column prop="content" label="原文" />
+        <el-table-column label="清洗" width="180">
+          <template #default="{ row }">
+            <el-tag v-for="tag in cleanTagList(row)" :key="tag" size="small" class="tag" :type="tagType(tag)">
+              {{ tagLabel(tag) }}
+            </el-tag>
+            <span v-if="!cleanTagList(row).length" class="muted">—</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="reviewTime" label="时间" width="180" />
         <el-table-column prop="likeCount" label="点赞" width="80" />
       </el-table>
@@ -129,7 +137,31 @@ async function upload(opt: UploadRequestOptions) {
 async function triggerClean() {
   await http.post(`/projects/${id}/pipeline/clean`)
   ElMessage.success('已提交清洗任务')
-  setTimeout(load, 800)
+  setTimeout(load, 1200)
+}
+
+function cleanTagList(row: any): string[] {
+  return String(row?.cleanTags || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function tagLabel(tag: string) {
+  const map: Record<string, string> = {
+    duplicate: '重复',
+    ad: '广告',
+    short: '过短',
+    masked: '已脱敏',
+  }
+  return map[tag] || tag
+}
+
+function tagType(tag: string) {
+  if (tag === 'ad') return 'danger'
+  if (tag === 'duplicate') return 'warning'
+  if (tag === 'short') return 'info'
+  return 'success'
 }
 
 async function downloadErrors(jobId: number) {
@@ -150,4 +182,5 @@ h2 { margin: 0; }
 .block { margin-bottom: 16px; }
 .mt { margin-top: 12px; }
 .pager { margin-top: 12px; display: flex; justify-content: flex-end; }
+.tag { margin-right: 6px; }
 </style>

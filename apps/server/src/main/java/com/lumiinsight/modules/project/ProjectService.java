@@ -157,7 +157,9 @@ public class ProjectService {
     }
 
     private ProjectView toView(Project p) {
-        long reviews = reviewMapper.selectCount(new LambdaQueryWrapper<Review>().eq(Review::getProjectId, p.getId()));
+        long reviews = reviewMapper.selectCount(new LambdaQueryWrapper<Review>()
+                .eq(Review::getProjectId, p.getId())
+                .eq(Review::getCounted, 1));
         return ProjectView.builder()
                 .id(p.getId())
                 .name(p.getName())

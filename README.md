@@ -2,7 +2,7 @@
 
 AI 驱动的灯具全网评论采集与消费者洞察报告平台（参赛 / 产品仓）。
 
-**当前状态：** 第一周已入库；W2 清洗空实现已通。本机 Docker 请用独立 MySQL 8（默认 3307）和 Redis（默认 16379），不要复用已有 mysql:5.7 / 本机 6379 Redis。
+**当前状态：** 第一周已入库；清洗已能去重、打广告/过短标签并脱敏。本机 Docker 请用独立 MySQL 8（默认 3307）和 Redis（默认 16379），不要复用已有 mysql:5.7 / 本机 6379 Redis。
 
 | 文档 | 说明 |
 |------|------|
@@ -33,7 +33,7 @@ AI 驱动的灯具全网评论采集与消费者洞察报告平台（参赛 / �
    首次启动日志会打印本地管理员账号密码（只一次，不要写进 README）。  
 4. 启动 Worker：`cd apps/ai-worker && python3 app/main.py`（看到 `listening on http://127.0.0.1:8090` 即可，不要用 uvicorn）。  
 5. 启动前端：`pnpm -C apps/web dev`（本机原生 Vite 会卡住，脚本会改用 WASM 打包，第一次大约半分钟），浏览器打开 http://127.0.0.1:5173 。  
-6. 建项目后导入 `eval/fixtures/sample-reviews.csv`；可点「触发清洗（空实现）」。  
+6. 建项目后导入 `eval/fixtures/sample-reviews.csv`；可点「触发清洗」。  
 7. 管理端配置 LLM Key 后再跑真实分析（W2 后续）。
 
 ## 安全

@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -17,16 +19,21 @@ public class WorkerClient {
     public WorkerClient(@Value("${lumiinsight.worker.base-url}") String baseUrl) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(1));
-        factory.setReadTimeout(Duration.ofSeconds(30));
+        factory.setReadTimeout(Duration.ofSeconds(60));
         this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> clean(Long jobId, Long projectId) {
+    public Map<String, Object> clean(Long jobId, Long projectId, List<Map<String, Object>> reviews) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("jobId", jobId);
+        body.put("projectId", projectId);
+        body.put("stage", "CLEAN");
+        body.put("reviews", reviews);
         return restClient.post()
                 .uri("/v1/jobs/clean")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("jobId", jobId, "projectId", projectId, "stage", "CLEAN"))
+                .body(body)
                 .retrieve()
                 .body(Map.class);
     }

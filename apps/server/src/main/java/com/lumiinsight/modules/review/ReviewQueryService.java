@@ -45,6 +45,8 @@ public class ReviewQueryService {
                 .likeCount(r.getLikeCount())
                 .productName(r.getProductName())
                 .sourceUrl(r.getSourceUrl())
+                .cleanTags(r.getCleanTags())
+                .counted(r.getCounted())
                 .build();
     }
 }

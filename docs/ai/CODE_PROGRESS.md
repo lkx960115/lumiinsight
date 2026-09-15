@@ -11,9 +11,9 @@
 
 ## 当前指针
 
-- **阶段：** W1 已交；W2D1 Worker 空清洗已交
+- **阶段：** W1 已交；W2D1 已交；W2D2 清洗规则已交
 - **本机 Docker：** mysql:5.7 占 3306、本机 Redis 占 6379；Docker Hub 直连会 `Service Unavailable`。用 `./scripts/compose-up.sh`（DaoCloud 镜像 + `docker pull`，避免 experimental `docker compose` 的 dockerfile.v0）。MySQL 映射 3307，Redis 映射 16379。Docker Desktop 需给 MySQL 8 / Qdrant 放开 seccomp，否则会无法建线程、反复重启。
-- **下一步：** 本机拉起 `lumi-*` 容器 → Java → Worker → Vue；然后 W2D2 真实清洗规则
+- **下一步：** W2D3 去水标签可解释 + 方面词典管理端维护后下一轮分析生效
 - **分支：** `dev`
 - **禁止：** 四平台爬虫、报告当事实输出、把 Key 写入仓库
 
@@ -23,16 +23,17 @@
 |----|------|------|
 | W1 | 登录、RBAC、项目、导入、LLM 后台 | 已完成 |
 | W2D1 | FastAPI 骨架 + Java 调空清洗 + 状态机 | 已完成 |
-| W2D2 | 清洗去重/广告/脱敏 | **下一步** |
+| W2D2 | 清洗去重/广告/脱敏 | 已完成 |
+| W2D3 | 去水可解释标签 + 方面词典生效 | **下一步** |
 
 ## 本机怎么跑（避开已有容器）
 
 1. 复制 `.env.example` → `.env`（`MYSQL_PORT=3307`，`REDIS_PORT=16379`）
 2. `./scripts/compose-up.sh`（国内镜像；不要直接 `docker compose up` 撞 Docker Hub）
 3. `mvn -f apps/server/pom.xml spring-boot:run`
-4. `cd apps/ai-worker && python3 app/main.py`（空实现用标准库，避免本机 uvicorn/pydantic 卡住）
+4. `cd apps/ai-worker && python3 app/main.py`（标准库启动，避免本机 uvicorn/pydantic 卡住）
 5. `pnpm -C apps/web dev`（本机 Vite/esbuild 会卡住，已改 WASM 打包，第一次约半分钟）
 6. 用启动日志里的 admin 密码登录（新权限 `pipeline:execute` 需重新登录）
-7. 建项目，导入 `eval/fixtures/sample-reviews.csv`，点「触发清洗（空实现）」
+7. 建项目，导入 `eval/fixtures/sample-reviews.csv`，点「触发清洗」。同样文本会去重，项目有效条数下降。
 
 健康检查：`GET /api/v1/health` 应看到 mysql/redis/qdrant/minio/worker。

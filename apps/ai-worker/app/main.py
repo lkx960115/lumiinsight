@@ -1,11 +1,18 @@
-"""灯鉴 Worker。本机部分 Mac 上 FastAPI/pydantic_core 会卡住无输出，空实现改用标准库。"""
+"""灯鉴 Worker。清洗用标准库，避免本机 FastAPI/pydantic 卡住。"""
 
 from __future__ import annotations
 
 import json
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import urlparse
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from app.clean import clean_reviews
 
 HOST = "127.0.0.1"
 PORT = 8090
@@ -40,14 +47,21 @@ class WorkerHandler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             self._send(400, {"code": "BAD_JSON", "message": "请求体不是 JSON"})
             return
+        reviews = data.get("reviews") or []
+        if not isinstance(reviews, list):
+            self._send(400, {"code": "BAD_REVIEWS", "message": "reviews 必须是数组"})
+            return
+        result = clean_reviews(reviews)
         self._send(
             200,
             {
                 "code": "0",
-                "message": "清洗空实现完成，尚未改写评论",
+                "message": result["message"],
                 "jobId": data.get("jobId"),
                 "projectId": data.get("projectId"),
-                "cleaned": 0,
+                "cleaned": result["cleaned"],
+                "stats": result["stats"],
+                "items": result["items"],
             },
         )
 
