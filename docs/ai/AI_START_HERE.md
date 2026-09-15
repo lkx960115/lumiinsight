@@ -8,7 +8,7 @@
 2. [代码进度（中断从这接）](CODE_PROGRESS.md)  
 3. [D1 架构基线](D1_ARCHITECTURE_BASELINE.md)  
 4. [D2 边界与模块地图](D2_BOUNDARY_MODULE_MAP.md)  
-5. [D3 可注入规则](D3_INJECTABLE_RULES.md) + [LOCAL_RULES](LOCAL_RULES.md)；改页面时再读 [产品界面标准](PRODUCT_UI.md)  
+5. [D3 可注入规则](D3_INJECTABLE_RULES.md) + [LOCAL_RULES](LOCAL_RULES.md)；改任何页面、按钮、列表、弹窗必须先读完 [产品界面标准](PRODUCT_UI.md)  
 6. 改业务语义时：[DOMAIN_LUMI.md](DOMAIN_LUMI.md)、[D4](D4_TACIT_KNOWLEDGE.md)  
 7. 改链路时：[D5](D5_DEPENDENCY_GRAPH.md)、[D6](D6_REPO_INDEX.md)  
 8. 排期：[三周实施计划](../三周实施计划.md)

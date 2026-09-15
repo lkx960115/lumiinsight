@@ -6,6 +6,7 @@
         <p class="muted">分析按用途选择模型。关掉主模型后，只要备用可用，分析仍会走第二家。Key 加密保存，页面只显示后四位。</p>
       </div>
       <div class="page-actions">
+        <el-button text @click="load">刷新</el-button>
         <el-button v-permission="'admin:llm:edit'" type="primary" @click="openProvider()">新增提供方</el-button>
       </div>
     </div>

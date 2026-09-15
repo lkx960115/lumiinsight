@@ -39,6 +39,16 @@
             </template>
           </el-table-column>
         </el-table>
+        <el-pagination
+          class="pager"
+          background
+          hide-on-single-page
+          layout="total, prev, pager, next"
+          :page-size="20"
+          :total="imports.total"
+          v-model:current-page="importPage"
+          @current-change="loadImports"
+        />
       </div>
     </section>
 
@@ -71,6 +81,16 @@
             </template>
           </el-table-column>
         </el-table>
+        <el-pagination
+          class="pager"
+          background
+          hide-on-single-page
+          layout="total, prev, pager, next"
+          :page-size="20"
+          :total="pipeline.total"
+          v-model:current-page="pipelinePage"
+          @current-change="loadPipeline"
+        />
       </div>
     </section>
   </div>
@@ -83,8 +103,10 @@ import http from '@/api/http'
 import { formatClock, importRemark, jobStatusLabel, jobTypeLabel, pipelineRemark } from '@/utils/labels'
 
 const router = useRouter()
-const imports = reactive({ records: [] as any[] })
-const pipeline = reactive({ records: [] as any[] })
+const importPage = ref(1)
+const pipelinePage = ref(1)
+const imports = reactive({ records: [] as any[], total: 0 })
+const pipeline = reactive({ records: [] as any[], total: 0 })
 const names = ref<Record<number, string>>({})
 
 function projectName(id?: number) {
@@ -96,19 +118,29 @@ function openProject(id: number) {
   router.push(`/app/projects/${id}`)
 }
 
-async function load() {
-  const [jobRes, pipeRes, projectRes] = await Promise.all([
-    http.get('/admin/jobs', { params: { size: 50 } }),
-    http.get('/admin/pipeline', { params: { size: 50 } }),
-    http.get('/projects', { params: { page: 1, size: 100 } }),
-  ])
-  imports.records = jobRes.data.data.records
-  pipeline.records = pipeRes.data.data.records
+async function loadImports() {
+  const { data } = await http.get('/admin/jobs', { params: { page: importPage.value, size: 20 } })
+  imports.records = data.data.records
+  imports.total = Number(data.data.total)
+}
+
+async function loadPipeline() {
+  const { data } = await http.get('/admin/pipeline', { params: { page: pipelinePage.value, size: 20 } })
+  pipeline.records = data.data.records
+  pipeline.total = Number(data.data.total)
+}
+
+async function loadNames() {
+  const { data } = await http.get('/projects', { params: { page: 1, size: 100 } })
   const map: Record<number, string> = {}
-  for (const item of projectRes.data.data.records || []) {
+  for (const item of data.data.records || []) {
     map[item.id] = item.name
   }
   names.value = map
+}
+
+async function load() {
+  await Promise.all([loadImports(), loadPipeline(), loadNames()])
 }
 
 onMounted(load)

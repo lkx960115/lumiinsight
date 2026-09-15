@@ -17,8 +17,20 @@
           <p class="cell-note">评论 {{ row.reviewCount || 0 }} 条</p>
         </template>
       </el-table-column>
-      <el-table-column label="品牌" min-width="180">
-        <template #default="{ row }">{{ [row.brand, row.mainModel].filter(Boolean).join(' · ') || '—' }}</template>
+      <el-table-column label="品牌" min-width="100">
+        <template #default="{ row }">{{ row.brand || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="主型号" min-width="100">
+        <template #default="{ row }">{{ row.mainModel || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="品类" min-width="100">
+        <template #default="{ row }">{{ row.category || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="平台" min-width="200">
+        <template #default="{ row }">{{ platformListLabel(row.platforms) }}</template>
+      </el-table-column>
+      <el-table-column label="时间" width="168">
+        <template #default="{ row }">{{ formatClock(row.createdAt) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="140">
         <template #default="{ row }">
@@ -29,15 +41,17 @@
         </template>
       </el-table-column>
     </el-table>
-    </div>
     <el-pagination
       class="pager"
       background
-      layout="prev, pager, next"
+      hide-on-single-page
+      layout="total, prev, pager, next"
+      :page-size="10"
       :total="table.total"
       v-model:current-page="page"
       @current-change="load"
     />
+    </div>
 
     <el-dialog v-model="visible" :title="form.id ? '编辑项目' : '新建项目'" width="560px">
       <el-form label-width="90px">
@@ -69,6 +83,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '@/api/http'
+import { formatClock, platformListLabel } from '@/utils/labels'
 
 const router = useRouter()
 const loading = ref(false)
@@ -125,7 +140,10 @@ async function save() {
     platforms: form.platforms,
   }
   if (form.id) await http.put(`/projects/${form.id}`, payload)
-  else await http.post('/projects', payload)
+  else {
+    await http.post('/projects', payload)
+    page.value = 1
+  }
   ElMessage.success('已保存')
   visible.value = false
   await load()
@@ -140,8 +158,3 @@ async function onDelete(row: any) {
 
 onMounted(load)
 </script>
-
-<style scoped>
-h2 { margin: 0; }
-.pager { margin-top: 16px; justify-content: flex-end; display: flex; }
-</style>

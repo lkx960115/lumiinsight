@@ -1,8 +1,13 @@
 <template>
   <div>
     <div class="page-head">
-      <h2>用户与角色</h2>
-      <el-button v-permission="'admin:user:edit'" type="primary" @click="open()">新建用户</el-button>
+      <div>
+        <h2>用户与角色</h2>
+        <p class="muted">管登录账号和角色。启用可在列表上直接开关。</p>
+      </div>
+      <div class="page-actions">
+        <el-button v-permission="'admin:user:edit'" type="primary" @click="open()">新建用户</el-button>
+      </div>
     </div>
     <div class="panel">
       <el-table :data="table.records" empty-text="还没有用户。">
@@ -30,6 +35,16 @@
         </template>
       </el-table-column>
     </el-table>
+      <el-pagination
+        class="pager"
+        background
+        hide-on-single-page
+        layout="total, prev, pager, next"
+        :page-size="20"
+        :total="table.total"
+        v-model:current-page="page"
+        @current-change="load"
+      />
     </div>
 
     <el-dialog v-model="visible" :title="form.id ? '编辑用户' : '新建用户'" width="480px">
@@ -62,17 +77,19 @@ import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const canEdit = computed(() => auth.has('admin:user:edit'))
-const table = reactive({ records: [] as any[] })
+const table = reactive({ records: [] as any[], total: 0 })
 const roles = ref<any[]>([])
 const visible = ref(false)
+const page = ref(1)
 const form = reactive<any>({ id: null, username: '', displayName: '', password: '', roleCode: 'analyst', enabled: 1 })
 
 async function load() {
   const [users, roleRes] = await Promise.all([
-    http.get('/admin/users', { params: { page: 1, size: 50 } }),
+    http.get('/admin/users', { params: { page: page.value, size: 20 } }),
     http.get('/admin/users/roles'),
   ])
   table.records = users.data.data.records
+  table.total = Number(users.data.data.total)
   roles.value = roleRes.data.data
 }
 
@@ -105,7 +122,10 @@ async function save() {
     enabled: form.enabled,
   }
   if (form.id) await http.put(`/admin/users/${form.id}`, payload)
-  else await http.post('/admin/users', payload)
+  else {
+    await http.post('/admin/users', payload)
+    page.value = 1
+  }
   ElMessage.success('已保存')
   visible.value = false
   await load()

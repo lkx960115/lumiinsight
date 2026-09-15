@@ -5,6 +5,9 @@
         <h2>操作日志</h2>
         <p class="muted">谁在什么时候改了项目、模型和导入。</p>
       </div>
+      <div class="page-actions">
+        <el-button text @click="load">刷新</el-button>
+      </div>
     </div>
 
     <div class="panel">
@@ -23,10 +26,11 @@
         </el-table-column>
       </el-table>
       <el-pagination
-        v-if="table.total > 20"
         class="pager"
         background
-        layout="prev, pager, next"
+        hide-on-single-page
+        layout="total, prev, pager, next"
+        :page-size="20"
         :total="table.total"
         v-model:current-page="page"
         @current-change="load"

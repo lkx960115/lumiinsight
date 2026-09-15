@@ -10,6 +10,11 @@ export function platformLabel(code?: string | null) {
   return PLATFORM_LABEL[code] || code
 }
 
+export function platformListLabel(codes?: string[] | null) {
+  if (!codes?.length) return '—'
+  return codes.map((code) => platformLabel(code)).join('、')
+}
+
 export function jobTypeLabel(type?: string | null) {
   if (type === 'CLEAN') return '清洗'
   if (type === 'ANALYZE') return '分析'

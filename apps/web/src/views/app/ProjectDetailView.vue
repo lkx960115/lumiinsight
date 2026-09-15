@@ -94,16 +94,17 @@
     <el-card class="block">
       <template #header>评论列表</template>
       <div class="toolbar">
-        <el-select v-model="platform" clearable placeholder="全部平台" style="width: 140px" @change="loadReviews">
+        <el-select v-model="platform" clearable placeholder="全部平台" style="width: 140px" @change="searchReviews">
           <el-option label="小红书" value="xiaohongshu" />
           <el-option label="京东" value="jd" />
           <el-option label="淘宝" value="taobao" />
           <el-option label="抖音" value="douyin" />
         </el-select>
-        <el-input v-model="keyword" placeholder="搜索原文" style="width: 240px" @keyup.enter="loadReviews" />
-        <el-button @click="loadReviews">查询</el-button>
+        <el-input v-model="keyword" clearable placeholder="搜索原文" style="width: 240px" @keyup.enter="searchReviews" />
+        <el-button @click="searchReviews">查询</el-button>
+        <el-button text @click="resetReviews">重置</el-button>
       </div>
-      <el-table :data="reviews.records" empty-text="还没有评论。请先导入文件，再点清洗并分析。">
+      <el-table :data="reviews.records" :empty-text="reviewEmptyText">
         <el-table-column type="expand">
           <template #default="{ row }">
             <div v-if="row.aspects?.length" class="aspect-detail">
@@ -146,7 +147,9 @@
       <el-pagination
         class="pager"
         background
-        layout="prev, pager, next"
+        hide-on-single-page
+        layout="total, prev, pager, next"
+        :page-size="10"
         :total="reviews.total"
         v-model:current-page="reviewPage"
         @current-change="loadReviews"
@@ -156,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
@@ -176,6 +179,21 @@ const platform = ref('')
 const keyword = ref('')
 const reviewPage = ref(1)
 const busy = ref(false)
+const reviewEmptyText = computed(() => {
+  if (platform.value || keyword.value) return '没有符合条件的评论。试试重置筛选。'
+  return '还没有评论。请先导入文件，再点清洗并分析。'
+})
+
+function searchReviews() {
+  reviewPage.value = 1
+  loadReviews()
+}
+
+function resetReviews() {
+  platform.value = ''
+  keyword.value = ''
+  searchReviews()
+}
 
 async function load() {
   const { data } = await http.get(`/projects/${id}`)

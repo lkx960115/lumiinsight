@@ -195,6 +195,58 @@ h2 {
   --el-button-hover-border-color: var(--accent-hover);
 }
 
+.el-button {
+  font-weight: 500;
+  border-radius: 8px;
+}
+
+.el-button--default {
+  --el-button-bg-color: transparent;
+  --el-button-border-color: rgba(28, 42, 38, 0.16);
+  --el-button-hover-bg-color: rgba(31, 106, 86, 0.08);
+  --el-button-hover-border-color: var(--accent);
+  --el-button-hover-text-color: var(--accent);
+}
+
+.el-button.is-text {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.el-button.is-text:hover,
+.el-button.is-text:focus {
+  color: var(--accent-hover);
+  background: transparent;
+}
+
+.el-button.is-text.el-button--danger {
+  color: #b4533a;
+}
+
+.el-dialog {
+  --el-dialog-bg-color: var(--surface);
+  border-radius: 12px;
+}
+
+.el-dialog__title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.el-form-item__label {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.el-pagination.is-background .el-pager li:not(.is-disabled).is-active {
+  background-color: var(--accent);
+}
+
+.el-switch.is-checked .el-switch__core {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
 .el-table {
   --el-table-bg-color: transparent;
   --el-table-tr-bg-color: transparent;

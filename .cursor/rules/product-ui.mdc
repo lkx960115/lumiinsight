@@ -3,4 +3,4 @@ description: 灯鉴工作台必须按产品标准交付，禁止工程师后台�
 alwaysApply: true
 ---
 
-改页面、补展示前，必须遵守项目正本 [`docs/ai/PRODUCT_UI.md`](docs/ai/PRODUCT_UI.md)。本文件只给 Cursor 注入提醒，不要在这里单独加条款。
+改任何页面、按钮、列表、弹窗、样式前，必须先读完并遵守 [`docs/ai/PRODUCT_UI.md`](docs/ai/PRODUCT_UI.md)。按其中的页面骨架、按钮层级、列表列顺序抄，不要另起一套。本文件只给 Cursor 注入提醒，不要在这里单独加条款。
