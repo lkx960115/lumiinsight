@@ -5,8 +5,10 @@
         <h2>{{ project.name }}</h2>
         <p class="muted">{{ project.brand }} {{ project.mainModel }} · 评论 {{ project.reviewCount }} 条</p>
       </div>
-      <el-button v-permission="'pipeline:execute'" type="primary" @click="triggerClean">触发清洗</el-button>
-      <el-button @click="router.push('/app/projects')">返回列表</el-button>
+      <div class="page-actions">
+        <el-button v-permission="'pipeline:execute'" type="primary" @click="triggerClean">触发清洗</el-button>
+        <el-button @click="router.push('/app/projects')">返回列表</el-button>
+      </div>
     </div>
 
     <el-card class="block">
@@ -42,20 +44,16 @@
 
     <el-card class="block">
       <template #header>评论列表</template>
-      <el-form inline>
-        <el-form-item>
-          <el-select v-model="platform" clearable placeholder="平台" style="width: 140px" @change="loadReviews">
-            <el-option label="小红书" value="xiaohongshu" />
-            <el-option label="京东" value="jd" />
-            <el-option label="淘宝" value="taobao" />
-            <el-option label="抖音" value="douyin" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-input v-model="keyword" placeholder="搜索原文" @keyup.enter="loadReviews" />
-        </el-form-item>
+      <div class="toolbar">
+        <el-select v-model="platform" clearable placeholder="平台" style="width: 140px" @change="loadReviews">
+          <el-option label="小红书" value="xiaohongshu" />
+          <el-option label="京东" value="jd" />
+          <el-option label="淘宝" value="taobao" />
+          <el-option label="抖音" value="douyin" />
+        </el-select>
+        <el-input v-model="keyword" placeholder="搜索原文" style="width: 240px" @keyup.enter="loadReviews" />
         <el-button @click="loadReviews">查询</el-button>
-      </el-form>
+      </div>
       <el-table :data="reviews.records">
         <el-table-column prop="platform" label="平台" width="120" />
         <el-table-column prop="content" label="原文" />

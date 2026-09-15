@@ -5,19 +5,26 @@
         <h2>项目</h2>
         <p class="muted">分析单元：品牌、型号、平台范围。采集勾选不触发拉取，数据只走导入。</p>
       </div>
-      <el-button v-permission="'project:edit'" type="primary" @click="openEdit()">新建项目</el-button>
+      <div class="page-actions">
+        <el-button v-permission="'project:edit'" type="primary" @click="openEdit()">新建项目</el-button>
+      </div>
     </div>
     <div class="panel">
     <el-table :data="table.records" v-loading="loading">
-      <el-table-column prop="name" label="名称" />
+      <el-table-column label="名称">
+        <template #default="{ row }">
+          <a class="name-link" @click.prevent="router.push(`/app/projects/${row.id}`)">{{ row.name }}</a>
+        </template>
+      </el-table-column>
       <el-table-column prop="brand" label="品牌" width="120" />
       <el-table-column prop="mainModel" label="主型号" width="160" />
       <el-table-column prop="reviewCount" label="评论数" width="100" />
-      <el-table-column label="操作" width="200">
+      <el-table-column label="操作" width="140" align="left">
         <template #default="{ row }">
-          <el-button text @click="router.push(`/app/projects/${row.id}`)">进入</el-button>
-          <el-button v-permission="'project:edit'" text @click="openEdit(row)">编辑</el-button>
-          <el-button v-permission="'project:delete'" text type="danger" @click="onDelete(row)">删除</el-button>
+          <div class="row-actions">
+            <el-button v-permission="'project:edit'" text @click="openEdit(row)">编辑</el-button>
+            <el-button v-permission="'project:delete'" text type="danger" @click="onDelete(row)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
