@@ -1,3 +1,5 @@
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-pydantic==2.10.4
+# 空实现不依赖第三方。本机 FastAPI/pydantic_core 会卡住时请直接：python3 app/main.py
+# 后续真实清洗再用：
+# fastapi==0.115.6
+# uvicorn==0.32.1
+# pydantic==2.10.4
