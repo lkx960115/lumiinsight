@@ -112,6 +112,7 @@ class WorkerHandler(BaseHTTPRequestHandler):
                 "analyzed": result["analyzed"],
                 "aspectCount": result["aspectCount"],
                 "source": result["source"],
+                "usage": result.get("usage") or {},
                 "items": result["items"],
             },
         )

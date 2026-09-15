@@ -7,6 +7,7 @@ import com.lumiinsight.modules.llm.dto.ProviderView;
 import com.lumiinsight.modules.llm.dto.RouteSaveRequest;
 import com.lumiinsight.modules.llm.entity.LlmModel;
 import com.lumiinsight.modules.llm.entity.LlmRoute;
+import com.lumiinsight.modules.llm.entity.LlmUsage;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,9 +26,11 @@ import java.util.List;
 public class LlmAdminController {
 
     private final LlmAdminService llmAdminService;
+    private final LlmUsageService llmUsageService;
 
-    public LlmAdminController(LlmAdminService llmAdminService) {
+    public LlmAdminController(LlmAdminService llmAdminService, LlmUsageService llmUsageService) {
         this.llmAdminService = llmAdminService;
+        this.llmUsageService = llmUsageService;
     }
 
     @GetMapping("/providers")
@@ -88,5 +91,11 @@ public class LlmAdminController {
     public ApiResult<Void> updateRoute(@PathVariable Long id, @Valid @RequestBody RouteSaveRequest request) {
         llmAdminService.saveRoute(id, request);
         return ApiResult.ok();
+    }
+
+    @GetMapping("/usage")
+    @PreAuthorize("hasAuthority('admin:llm:view')")
+    public ApiResult<List<LlmUsage>> usage() {
+        return ApiResult.ok(llmUsageService.recent(50));
     }
 }

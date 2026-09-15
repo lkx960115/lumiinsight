@@ -183,8 +183,11 @@ async function runPipeline(url: string, pending: string) {
   const beforeId = pipeline.records[0]?.id
   await http.post(url)
   ElMessage.success(pending)
-  for (let i = 0; i < 40; i++) {
-    await new Promise((r) => setTimeout(r, 400))
+  const analyze = url.includes('analyze')
+  const rounds = analyze ? 90 : 40
+  const waitMs = analyze ? 2000 : 400
+  for (let i = 0; i < rounds; i++) {
+    await new Promise((r) => setTimeout(r, waitMs))
     await loadPipeline()
     const latest = pipeline.records[0]
     if (!latest || latest.id === beforeId) {

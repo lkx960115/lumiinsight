@@ -73,6 +73,22 @@ class AbsaTest(unittest.TestCase):
         self.assertEqual("pos", by_name(item)["售后"]["sentiment"])
         self.assertEqual("rule", item["source"])
 
+    def test_unique_reviews_collapses_duplicates(self):
+        from app.absa import unique_reviews, copy_by_content
+
+        rows = [
+            {"id": 1, "content": "亮度够用"},
+            {"id": 2, "content": "亮度够用"},
+            {"id": 3, "content": "色温偏冷"},
+        ]
+        self.assertEqual(2, len(unique_reviews(rows)))
+        copied = copy_by_content(
+            {1: {"id": 1, "sentiment": "pos", "aspects": [{"name": "亮度"}]}},
+            rows,
+        )
+        self.assertEqual("pos", copied[2]["sentiment"])
+        self.assertEqual(2, copied[2]["id"])
+
 
 if __name__ == "__main__":
     unittest.main()

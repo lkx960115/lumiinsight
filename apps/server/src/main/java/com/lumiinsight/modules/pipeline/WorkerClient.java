@@ -19,7 +19,7 @@ public class WorkerClient {
 
     public WorkerClient(@Value("${lumiinsight.worker.base-url}") String baseUrl) {
         this.restClient = build(baseUrl, 60);
-        this.analyzeClient = build(baseUrl, 180);
+        this.analyzeClient = build(baseUrl, 90);
     }
 
     private static RestClient build(String baseUrl, int readSeconds) {
@@ -69,6 +69,7 @@ public class WorkerClient {
         return analyzeClient.post()
                 .uri("/v1/jobs/analyze")
                 .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
                 .body(Map.class);

@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from app.clean import match_aspects
-from app.llm import chat_json
+from app.llm import add_usage, chat_json
 
 CLAUSE_RE = re.compile(r"[，。；;,.!?！？]")
 
@@ -204,18 +204,57 @@ def _llm_prompt(batch: list[dict[str, Any]], names: list[str]) -> str:
     return "\n".join(lines)
 
 
-def _analyze_with_llm(reviews: list[dict[str, Any]], names: list[str], spec: dict[str, Any]) -> dict[Any, dict[str, Any]]:
+def unique_reviews(reviews: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    unique: list[dict[str, Any]] = []
+    for row in reviews:
+        key = str(row.get("content") or "").strip()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(row)
+    return unique
+
+
+def copy_by_content(source: dict[Any, dict[str, Any]], reviews: list[dict[str, Any]]) -> dict[Any, dict[str, Any]]:
+    by_content: dict[str, dict[str, Any]] = {}
+    for row in reviews:
+        rid = row.get("id")
+        if rid in source:
+            by_content[str(row.get("content") or "").strip()] = source[rid]
+    out = dict(source)
+    for row in reviews:
+        rid = row.get("id")
+        if rid in out:
+            continue
+        template = by_content.get(str(row.get("content") or "").strip())
+        if not template:
+            continue
+        copied = dict(template)
+        copied["id"] = rid
+        copied["aspects"] = [dict(item) for item in (template.get("aspects") or [])]
+        out[rid] = copied
+    return out
+
+
+def _analyze_with_llm(reviews: list[dict[str, Any]], names: list[str], spec: dict[str, Any]) -> tuple[dict[Any, dict[str, Any]], dict[str, int]]:
     out: dict[Any, dict[str, Any]] = {}
-    batch_size = 8
-    for i in range(0, len(reviews), batch_size):
-        batch = reviews[i : i + batch_size]
-        data = chat_json(spec, _llm_prompt(batch, names))
+    usage = {"promptTokens": 0, "completionTokens": 0, "totalTokens": 0}
+    batch_size = 5
+    unique = unique_reviews(reviews)
+    for i in range(0, len(unique), batch_size):
+        batch = unique[i : i + batch_size]
+        try:
+            data, batch_usage = chat_json(spec, _llm_prompt(batch, names))
+            usage = add_usage(usage, batch_usage)
+        except Exception:
+            continue
         items = data.get("items") if isinstance(data.get("items"), list) else []
         for item in items:
             if not isinstance(item, dict) or item.get("id") is None:
                 continue
             out[item.get("id")] = normalize_item(item, names, "llm")
-    return out
+    return copy_by_content(out, reviews), usage
 
 
 def analyze_reviews(
@@ -228,9 +267,10 @@ def analyze_reviews(
     llm_items: dict[Any, dict[str, Any]] = {}
     llm_error = ""
     source_used = "rule"
+    usage = {"promptTokens": 0, "completionTokens": 0, "totalTokens": 0}
     if llm and isinstance(llm, dict) and llm.get("apiKey"):
         try:
-            llm_items = _analyze_with_llm(reviews, names, llm)
+            llm_items, usage = _analyze_with_llm(reviews, names, llm)
             if llm_items:
                 source_used = "llm"
         except Exception as exc:
@@ -274,4 +314,5 @@ def analyze_reviews(
         "analyzed": len(items),
         "aspectCount": aspect_count,
         "source": source_used if not llm_error else "rule",
+        "usage": usage,
     }

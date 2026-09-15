@@ -44,6 +44,6 @@ lumiinsight/
 
 `sys_user` `sys_role` `sys_permission` `sys_user_role` `sys_role_permission`  
 `project` `project_member` `import_job` `review` `review_aspect` `pipeline_job`  
-`llm_provider` `llm_model` `llm_route` `aspect_dict` `audit_log`
+`llm_provider` `llm_model` `llm_route` `llm_usage` `aspect_dict` `audit_log`
 
 Worker 路由：`GET /health`、`POST /v1/jobs/clean`（去重 / 广告 / 过短 / 脱敏）、`POST /v1/jobs/analyze`（情感 + ABSA，方面名必须落在词典或「其它」）。

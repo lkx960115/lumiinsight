@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lumiinsight.modules.dict.AspectDictService;
 import com.lumiinsight.modules.dict.entity.AspectDict;
 import com.lumiinsight.modules.llm.LlmRuntimeService;
+import com.lumiinsight.modules.llm.LlmUsageService;
 import com.lumiinsight.modules.pipeline.entity.PipelineJob;
 import com.lumiinsight.modules.pipeline.mapper.PipelineJobMapper;
 import com.lumiinsight.modules.review.entity.Review;
@@ -33,6 +34,7 @@ public class PipelineRunner {
     private final ReviewAspectMapper reviewAspectMapper;
     private final AspectDictService aspectDictService;
     private final LlmRuntimeService llmRuntimeService;
+    private final LlmUsageService llmUsageService;
 
     public PipelineRunner(
             PipelineJobMapper pipelineJobMapper,
@@ -40,7 +42,8 @@ public class PipelineRunner {
             ReviewMapper reviewMapper,
             ReviewAspectMapper reviewAspectMapper,
             AspectDictService aspectDictService,
-            LlmRuntimeService llmRuntimeService
+            LlmRuntimeService llmRuntimeService,
+            LlmUsageService llmUsageService
     ) {
         this.pipelineJobMapper = pipelineJobMapper;
         this.workerClient = workerClient;
@@ -48,6 +51,7 @@ public class PipelineRunner {
         this.reviewAspectMapper = reviewAspectMapper;
         this.aspectDictService = aspectDictService;
         this.llmRuntimeService = llmRuntimeService;
+        this.llmUsageService = llmUsageService;
     }
 
     @Async("pipelineExecutor")
@@ -112,11 +116,44 @@ public class PipelineRunner {
                 row.put("content", review.getContent());
                 payload.add(row);
             }
-            Map<String, Object> llm = llmRuntimeService.workerSpec("absa");
-            log.info("分析送出有效评论 {} 条 jobId={} llm={}", payload.size(), job.getId(), llm != null);
-            Map<String, Object> result = workerClient.analyze(
-                    job.getId(), job.getProjectId(), payload, aspectPayload(), llm
-            );
+            List<Map<String, Object>> specs = llmRuntimeService.workerSpecs("absa");
+            log.info("分析送出评论 {} 条 jobId={} 可用模型 {}", payload.size(), job.getId(), specs.size());
+            Map<String, Object> result = null;
+            Map<String, Object> used = null;
+            for (Map<String, Object> spec : specs) {
+                try {
+                    Map<String, Object> attempt = workerClient.analyze(
+                            job.getId(), job.getProjectId(), payload, aspectPayload(), spec
+                    );
+                    boolean ok = usedLlm(attempt);
+                    llmUsageService.record(
+                            job.getId(),
+                            job.getProjectId(),
+                            spec,
+                            attempt,
+                            ok,
+                            ok ? "ok" : "模型未返回有效结果"
+                    );
+                    if (ok) {
+                        result = attempt;
+                        used = spec;
+                        break;
+                    }
+                } catch (Exception e) {
+                    log.warn("模型调用失败，尝试下一个 jobId={} role={}", jobId, spec.get("role"), e);
+                    llmUsageService.record(job.getId(), job.getProjectId(), spec, null, false, "超时或调用失败");
+                }
+            }
+            if (result == null) {
+                result = workerClient.analyze(job.getId(), job.getProjectId(), payload, aspectPayload(), null);
+            }
+            if (used != null && result != null) {
+                String label = String.valueOf(used.getOrDefault("providerName", "")) + " · " + used.getOrDefault("model", "");
+                String extra = "backup".equals(String.valueOf(used.get("role"))) ? "；已切备用 " + label : "；" + label;
+                Map<String, Object> copy = new HashMap<>(result);
+                copy.put("message", String.valueOf(result.getOrDefault("message", "分析完成")) + extra);
+                result = copy;
+            }
             applyAnalyzeResult(job.getProjectId(), result);
             job.setStatus(JobStatus.READY.name());
             Object msg = result == null ? null : result.get("message");
@@ -235,6 +272,10 @@ public class PipelineRunner {
                 reviewAspectMapper.insert(row);
             }
         }
+    }
+
+    private static boolean usedLlm(Map<String, Object> result) {
+        return result != null && "llm".equals(String.valueOf(result.get("source")));
     }
 
     private static String asText(Object raw) {
