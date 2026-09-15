@@ -356,3 +356,64 @@ h2 {
   gap: 8px;
   margin: 6px 0;
 }
+
+.overview-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.overview-stat {
+  padding: 14px 16px;
+  background: var(--paper);
+  border-radius: 10px;
+}
+
+.overview-stat strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.overview-stat span {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.overview-charts h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.overview-chart {
+  height: 280px;
+}
+
+.job-failed {
+  color: #b4533a;
+  font-weight: 600;
+}
+
+.block {
+  margin-bottom: 16px;
+}
+
+.mt {
+  margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .overview-stats,
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -33,6 +33,18 @@ public class PipelineController {
         return ApiResult.ok(pipelineService.triggerAnalyze(projectId));
     }
 
+    @PostMapping("/projects/{projectId}/pipeline/run")
+    @PreAuthorize("hasAuthority('pipeline:execute')")
+    public ApiResult<PipelineJob> run(@PathVariable Long projectId) {
+        return ApiResult.ok(pipelineService.triggerRun(projectId));
+    }
+
+    @PostMapping("/pipeline/{jobId}/retry")
+    @PreAuthorize("hasAuthority('pipeline:execute')")
+    public ApiResult<PipelineJob> retry(@PathVariable Long jobId) {
+        return ApiResult.ok(pipelineService.retry(jobId));
+    }
+
     @GetMapping("/pipeline/{jobId}")
     @PreAuthorize("hasAuthority('pipeline:execute')")
     public ApiResult<PipelineJob> get(@PathVariable Long jobId) {
@@ -47,5 +59,15 @@ public class PipelineController {
             @RequestParam(defaultValue = "20") long size
     ) {
         return ApiResult.ok(pipelineService.page(projectId, page, size));
+    }
+
+    @GetMapping("/admin/pipeline")
+    @PreAuthorize("hasAuthority('admin:job:view')")
+    public ApiResult<Page<PipelineJob>> adminPage(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size
+    ) {
+        return ApiResult.ok(pipelineService.adminPage(status, page, size));
     }
 }

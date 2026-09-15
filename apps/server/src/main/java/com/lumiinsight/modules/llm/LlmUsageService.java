@@ -5,6 +5,8 @@ import com.lumiinsight.modules.llm.entity.LlmUsage;
 import com.lumiinsight.modules.llm.mapper.LlmUsageMapper;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +36,7 @@ public class LlmUsageService {
         row.setTotalTokens(asInt(usage.get("totalTokens")));
         row.setSuccess(success ? 1 : 0);
         row.setDetail(detail);
+        row.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Shanghai")));
         llmUsageMapper.insert(row);
     }
 

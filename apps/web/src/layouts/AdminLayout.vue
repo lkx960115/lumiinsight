@@ -8,14 +8,14 @@
       <el-menu :default-active="route.path" router>
         <el-menu-item v-if="auth.has('admin:user:view')" index="/admin/users">用户角色</el-menu-item>
         <el-menu-item v-if="auth.has('admin:llm:view')" index="/admin/llm">模型配置</el-menu-item>
-        <el-menu-item v-if="auth.has('admin:job:view')" index="/admin/jobs">导入任务</el-menu-item>
+        <el-menu-item v-if="auth.has('admin:job:view')" index="/admin/jobs">任务日志</el-menu-item>
         <el-menu-item v-if="auth.has('admin:dict:view')" index="/admin/dicts">方面词典</el-menu-item>
         <el-menu-item v-if="auth.has('admin:audit:view')" index="/admin/audit">操作日志</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
       <el-header class="app-header">
-        <span class="muted">账号、模型与导入记录</span>
+        <span class="muted">账号、模型与任务日志</span>
         <div>
           <el-button text @click="router.push('/app/projects')">返回工作台</el-button>
           <span class="user">{{ auth.user?.displayName }}</span>

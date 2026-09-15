@@ -278,7 +278,25 @@ function routeHealth(row: any) {
 }
 
 function formatTime(value?: string) {
-  return value ? String(value).replace('T', ' ').slice(0, 19) : '—'
+  if (!value) return '—'
+  const raw = String(value).trim()
+  if (/[zZ]$/.test(raw) || /[+-]\d{2}:\d{2}$/.test(raw)) {
+    const date = new Date(raw)
+    if (Number.isNaN(date.getTime())) {
+      return raw.replace('T', ' ').slice(0, 19)
+    }
+    return new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(date)
+  }
+  return raw.replace('T', ' ').slice(0, 19)
 }
 
 function openProvider(row?: any) {

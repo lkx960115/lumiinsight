@@ -60,6 +60,31 @@ public class PipelineRunner {
         if (job == null) {
             return;
         }
+        executeClean(job, true);
+    }
+
+    @Async("pipelineExecutor")
+    public void runAnalyze(Long jobId) {
+        PipelineJob job = pipelineJobMapper.selectById(jobId);
+        if (job == null) {
+            return;
+        }
+        executeAnalyze(job);
+    }
+
+    @Async("pipelineExecutor")
+    public void runCleanThenAnalyze(Long jobId) {
+        PipelineJob job = pipelineJobMapper.selectById(jobId);
+        if (job == null) {
+            return;
+        }
+        if (!executeClean(job, false)) {
+            return;
+        }
+        executeAnalyze(job);
+    }
+
+    private boolean executeClean(PipelineJob job, boolean markReady) {
         job.setStatus(JobStatus.CLEANING.name());
         job.setMessage("正在清洗评论");
         pipelineJobMapper.updateById(job);
@@ -78,24 +103,27 @@ public class PipelineRunner {
             log.info("清洗送出评论 {} 条 jobId={} projectId={}", payload.size(), job.getId(), job.getProjectId());
             Map<String, Object> result = workerClient.clean(job.getId(), job.getProjectId(), payload, aspectPayload());
             applyCleanResult(job.getProjectId(), result);
-            job.setStatus(JobStatus.READY.name());
             Object msg = result == null ? null : result.get("message");
-            job.setMessage(msg == null ? "清洗完成" : String.valueOf(msg));
+            String text = msg == null ? "清洗完成" : String.valueOf(msg);
+            if (markReady) {
+                job.setStatus(JobStatus.READY.name());
+                job.setMessage(text);
+            } else {
+                job.setStatus(JobStatus.ANALYZING.name());
+                job.setMessage(text + "，正在分析情感与方面");
+            }
             pipelineJobMapper.updateById(job);
+            return true;
         } catch (Exception e) {
-            log.warn("清洗任务失败 jobId={}", jobId, e);
+            log.warn("清洗任务失败 jobId={}", job.getId(), e);
             job.setStatus(JobStatus.FAILED.name());
             job.setMessage("Worker 不可用或调用失败: " + e.getMessage());
             pipelineJobMapper.updateById(job);
+            return false;
         }
     }
 
-    @Async("pipelineExecutor")
-    public void runAnalyze(Long jobId) {
-        PipelineJob job = pipelineJobMapper.selectById(jobId);
-        if (job == null) {
-            return;
-        }
+    private void executeAnalyze(PipelineJob job) {
         job.setStatus(JobStatus.ANALYZING.name());
         job.setMessage("正在分析情感与方面");
         pipelineJobMapper.updateById(job);
@@ -140,7 +168,7 @@ public class PipelineRunner {
                         break;
                     }
                 } catch (Exception e) {
-                    log.warn("模型调用失败，尝试下一个 jobId={} role={}", jobId, spec.get("role"), e);
+                    log.warn("模型调用失败，尝试下一个 jobId={} role={}", job.getId(), spec.get("role"), e);
                     llmUsageService.record(job.getId(), job.getProjectId(), spec, null, false, "超时或调用失败");
                 }
             }
@@ -160,7 +188,7 @@ public class PipelineRunner {
             job.setMessage(msg == null ? "分析完成" : String.valueOf(msg));
             pipelineJobMapper.updateById(job);
         } catch (Exception e) {
-            log.warn("分析任务失败 jobId={}", jobId, e);
+            log.warn("分析任务失败 jobId={}", job.getId(), e);
             job.setStatus(JobStatus.FAILED.name());
             job.setMessage("分析失败: " + e.getMessage());
             pipelineJobMapper.updateById(job);
