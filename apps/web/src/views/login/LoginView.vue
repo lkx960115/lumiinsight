@@ -1,18 +1,21 @@
 <template>
-  <div class="login">
-    <el-card class="card">
-      <h1>灯鉴 LumiInsight</h1>
-      <p class="muted">本地账号登录。初始管理员密码只在后端首次启动日志中打印。</p>
-      <el-form @submit.prevent="onSubmit">
-        <el-form-item>
-          <el-input v-model="username" placeholder="用户名" />
+  <div class="login-page">
+    <div class="login-stage">
+      <p class="login-mark">灯鉴</p>
+      <h1>登录工作台</h1>
+      <p class="muted">用首次启动日志里的管理员账号进入。密码只打印一次。</p>
+      <el-form class="login-form" label-position="top" @submit.prevent="onSubmit">
+        <el-form-item label="用户名">
+          <el-input v-model="username" size="large" autocomplete="username" />
         </el-form-item>
-        <el-form-item>
-          <el-input v-model="password" type="password" placeholder="密码" show-password />
+        <el-form-item label="密码">
+          <el-input v-model="password" type="password" size="large" show-password autocomplete="current-password" />
         </el-form-item>
-        <el-button type="primary" style="width: 100%" :loading="loading" native-type="submit">登录</el-button>
+        <el-button class="login-submit" type="primary" size="large" :loading="loading" native-type="submit">
+          进入灯鉴
+        </el-button>
       </el-form>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -39,14 +42,3 @@ async function onSubmit() {
   }
 }
 </script>
-
-<style scoped>
-.login {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(160deg, #16302b, #1f6f5b 55%, #f4efe6);
-}
-.card { width: 380px; }
-h1 { margin: 0 0 8px; font-size: 22px; }
-</style>

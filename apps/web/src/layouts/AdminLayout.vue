@@ -1,7 +1,10 @@
 <template>
-  <el-container class="shell">
-    <el-aside width="220px" class="aside">
-      <div class="brand">灯鉴 · 管理端</div>
+  <el-container class="app-shell">
+    <el-aside width="220px" class="app-aside">
+      <div class="app-brand">
+        <strong>灯鉴</strong>
+        <span>系统管理</span>
+      </div>
       <el-menu :default-active="route.path" router>
         <el-menu-item v-if="auth.has('admin:user:view')" index="/admin/users">用户角色</el-menu-item>
         <el-menu-item v-if="auth.has('admin:llm:view')" index="/admin/llm">模型配置</el-menu-item>
@@ -11,15 +14,15 @@
       </el-menu>
     </el-aside>
     <el-container>
-      <el-header class="header">
-        <span class="muted">权限码与后端注解同名</span>
+      <el-header class="app-header">
+        <span class="muted">账号、模型与导入记录</span>
         <div>
           <el-button text @click="router.push('/app/projects')">返回工作台</el-button>
           <span class="user">{{ auth.user?.displayName }}</span>
           <el-button text @click="onLogout">退出</el-button>
         </div>
       </el-header>
-      <el-main>
+      <el-main class="app-main">
         <router-view />
       </el-main>
     </el-container>
@@ -39,14 +42,3 @@ function onLogout() {
   router.push('/login')
 }
 </script>
-
-<style scoped>
-.shell { height: 100%; }
-.aside { background: #1b2430; color: #f4efe6; }
-.brand { padding: 20px 16px; font-weight: 700; }
-.aside :deep(.el-menu) { background: transparent; border: none; }
-.aside :deep(.el-menu-item) { color: #dbe4ee; }
-.aside :deep(.el-menu-item.is-active) { background: #2a5a8c; color: #fff; }
-.header { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #eadfce; }
-.user { margin-right: 8px; }
-</style>

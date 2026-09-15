@@ -4,6 +4,7 @@
       <h2>用户与角色</h2>
       <el-button v-permission="'admin:user:edit'" type="primary" @click="open()">新建用户</el-button>
     </div>
+    <div class="panel">
     <el-table :data="table.records">
       <el-table-column prop="username" label="用户名" />
       <el-table-column prop="displayName" label="显示名" />
@@ -17,6 +18,7 @@
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <el-dialog v-model="visible" :title="form.id ? '编辑用户' : '新建用户'" width="480px">
       <el-form label-width="90px">

@@ -1,7 +1,33 @@
 :root {
-  --ink: #16302b;
-  --paper: #f4efe6;
-  --accent: #1f6f5b;
+  --ink: #1c2a26;
+  --ink-soft: #5c6b66;
+  --paper: #f3eee4;
+  --surface: #fbf8f2;
+  --line: rgba(28, 42, 38, 0.1);
+  --accent: #1f6a56;
+  --accent-hover: #185445;
+  --aside: #14241f;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius: 12px;
+  --el-color-primary: #1f6a56;
+  --el-color-primary-light-3: #4a8f7d;
+  --el-color-primary-light-5: #7aada0;
+  --el-color-primary-light-7: #b3d1c8;
+  --el-color-primary-light-8: #cde0db;
+  --el-color-primary-light-9: #e6f0ed;
+  --el-color-primary-dark-2: #185445;
+  --el-border-radius-base: 8px;
+  --el-font-family: inherit;
+  --el-text-color-primary: #1c2a26;
+  --el-text-color-regular: #3d4d48;
+  --el-bg-color: #fbf8f2;
+  --el-fill-color-blank: #fbf8f2;
+  --el-border-color: rgba(28, 42, 38, 0.12);
+  --el-border-color-light: rgba(28, 42, 38, 0.08);
 }
 
 html,
@@ -11,17 +37,192 @@ body,
   height: 100%;
   background: var(--paper);
   color: var(--ink);
-  font-family: "Source Han Sans SC", "PingFang SC", "Noto Sans SC", sans-serif;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.3;
 }
 
 .page-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .muted {
-  color: #6b7280;
+  color: var(--ink-soft);
   font-size: 13px;
+  line-height: 1.6;
+}
+
+.panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  box-shadow: 0 18px 40px rgba(20, 36, 31, 0.05);
+}
+
+.app-shell {
+  height: 100%;
+}
+
+.app-aside {
+  background: var(--aside);
+  color: #e8efe9;
+}
+
+.app-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 28px 20px 20px;
+}
+
+.app-brand strong {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.app-brand span {
+  font-size: 12px;
+  color: rgba(232, 239, 233, 0.62);
+}
+
+.app-aside .el-menu {
+  background: transparent;
+  border: none;
+  padding: 8px;
+}
+
+.app-aside .el-menu-item {
+  height: 44px;
+  line-height: 44px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  color: rgba(232, 239, 233, 0.82);
+}
+
+.app-aside .el-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.app-aside .el-menu-item.is-active {
+  background: #1f6a56;
+  color: #fff;
+}
+
+.app-header.el-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 24px;
+  background: rgba(251, 248, 242, 0.92);
+  border-bottom: 1px solid var(--line);
+}
+
+.app-main.el-main {
+  padding: 24px 28px 32px;
+}
+
+.app-header .user {
+  margin: 0 8px 0 16px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.app-main {
+  padding: 24px 28px 32px;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--accent);
+  --el-button-border-color: var(--accent);
+  --el-button-hover-bg-color: var(--accent-hover);
+  --el-button-hover-border-color: var(--accent-hover);
+}
+
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: transparent;
+  --el-table-row-hover-bg-color: #efe8da;
+  background: transparent;
+}
+
+.el-card {
+  --el-card-bg-color: var(--surface);
+  border: none;
+  box-shadow: 0 18px 40px rgba(20, 36, 31, 0.08);
+}
+
+.login-page {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  background:
+    radial-gradient(1200px 480px at 80% -10%, rgba(31, 106, 86, 0.28), transparent 60%),
+    #14241f;
+}
+
+.login-stage {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px;
+  background: #fbf8f2;
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(8, 16, 14, 0.28);
+}
+
+.login-mark {
+  margin: 0 0 24px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: #1f6a56;
+}
+
+.login-stage h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.login-form {
+  margin-top: 24px;
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.login-form .el-form-item__label {
+  color: #5c6b66;
+  font-weight: 500;
+}
+
+.pager {
+  margin-top: 16px;
+  justify-content: flex-end;
+  display: flex;
 }

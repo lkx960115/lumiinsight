@@ -32,7 +32,7 @@ AI 驱动的灯具全网评论采集与消费者洞察报告平台（参赛 / �
 3. 启动后端：`mvn -f apps/server/pom.xml spring-boot:run`。  
    首次启动日志会打印本地管理员账号密码（只一次，不要写进 README）。  
 4. 启动 Worker：`cd apps/ai-worker && python3 app/main.py`（看到 `listening on http://127.0.0.1:8090` 即可，不要用 uvicorn）。  
-5. 启动前端：`pnpm -C apps/web dev`，浏览器打开 http://localhost:5173 。  
+5. 启动前端：`pnpm -C apps/web dev`（本机原生 Vite 会卡住，脚本会改用 WASM 打包，第一次大约半分钟），浏览器打开 http://127.0.0.1:5173 。  
 6. 建项目后导入 `eval/fixtures/sample-reviews.csv`；可点「触发清洗（空实现）」。  
 7. 管理端配置 LLM Key 后再跑真实分析（W2 后续）。
 

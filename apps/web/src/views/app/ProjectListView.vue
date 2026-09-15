@@ -7,6 +7,7 @@
       </div>
       <el-button v-permission="'project:edit'" type="primary" @click="openEdit()">新建项目</el-button>
     </div>
+    <div class="panel">
     <el-table :data="table.records" v-loading="loading">
       <el-table-column prop="name" label="名称" />
       <el-table-column prop="brand" label="品牌" width="120" />
@@ -20,6 +21,7 @@
         </template>
       </el-table-column>
     </el-table>
+    </div>
     <el-pagination
       class="pager"
       background

@@ -31,7 +31,7 @@
 2. `./scripts/compose-up.sh`（国内镜像；不要直接 `docker compose up` 撞 Docker Hub）
 3. `mvn -f apps/server/pom.xml spring-boot:run`
 4. `cd apps/ai-worker && python3 app/main.py`（空实现用标准库，避免本机 uvicorn/pydantic 卡住）
-5. `pnpm -C apps/web dev`
+5. `pnpm -C apps/web dev`（本机 Vite/esbuild 会卡住，已改 WASM 打包，第一次约半分钟）
 6. 用启动日志里的 admin 密码登录（新权限 `pipeline:execute` 需重新登录）
 7. 建项目，导入 `eval/fixtures/sample-reviews.csv`，点「触发清洗（空实现）」
 
