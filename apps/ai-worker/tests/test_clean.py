@@ -30,6 +30,29 @@ class CleanRulesTest(unittest.TestCase):
         self.assertIn("masked", item["tags"])
         self.assertTrue(item["counted"])
 
+    def test_template_and_aspect_dict(self):
+        aspects = [{"name": "色温", "keywords": "色温,暖光,冷光"}]
+        result = clean_reviews(
+            [
+                {"id": 1, "platform": "jd", "content": "好评"},
+                {"id": 2, "platform": "jd", "content": "色温偏冷，希望有暖光档"},
+            ],
+            aspects,
+        )
+        by_id = {item["id"]: item for item in result["items"]}
+        self.assertIn("template", by_id[1]["tags"])
+        self.assertFalse(by_id[1]["counted"])
+        self.assertIn("模板好评", by_id[1]["reason"])
+        self.assertEqual(["色温"], by_id[2]["aspectHits"])
+        self.assertTrue(by_id[2]["counted"])
+
+    def test_dict_change_changes_hits(self):
+        row = [{"id": 1, "platform": "jd", "content": "客厅晚上很舒服"}]
+        before = clean_reviews(row, [{"name": "色温", "keywords": "色温"}])
+        after = clean_reviews(row, [{"name": "亮度", "keywords": "够用,舒服,亮度"}])
+        self.assertEqual([], before["items"][0]["aspectHits"])
+        self.assertEqual(["亮度"], after["items"][0]["aspectHits"])
+
     def test_ad_and_short(self):
         result = clean_reviews(
             [

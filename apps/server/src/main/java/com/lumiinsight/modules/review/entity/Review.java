@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -27,6 +28,12 @@ public class Review {
     private String rawPayload;
     private String contentHash;
     private String cleanTags;
+    private String cleanReason;
+    private String aspectHits;
+    private String sentiment;
+    private String sentimentReason;
+    private BigDecimal sentimentConfidence;
+    private String analyzeSource;
     private Integer counted;
     private LocalDateTime createdAt;
     @TableLogic

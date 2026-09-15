@@ -42,6 +42,19 @@ public class PipelineService {
         return job;
     }
 
+    public PipelineJob triggerAnalyze(Long projectId) {
+        projectService.requireVisible(projectId);
+        PipelineJob job = new PipelineJob();
+        job.setProjectId(projectId);
+        job.setType("ANALYZE");
+        job.setStatus(JobStatus.PENDING.name());
+        job.setCreatedBy(SecurityUtils.requireUser().getUserId());
+        pipelineJobMapper.insert(job);
+        auditService.record("pipeline.analyze", "pipeline_job", String.valueOf(job.getId()));
+        pipelineRunner.runAnalyze(job.getId());
+        return job;
+    }
+
     public PipelineJob get(Long jobId) {
         PipelineJob job = pipelineJobMapper.selectById(jobId);
         if (job == null) {

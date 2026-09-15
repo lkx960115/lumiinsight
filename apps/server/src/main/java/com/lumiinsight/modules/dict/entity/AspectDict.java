@@ -12,6 +12,7 @@ public class AspectDict {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String name;
+    private String keywords;
     private Integer sortNo;
     private Integer enabled;
     @TableLogic

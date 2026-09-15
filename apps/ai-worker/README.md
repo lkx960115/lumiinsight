@@ -11,4 +11,4 @@ python3 app/main.py
 
 看到 `lumiinsight-ai-worker listening on http://127.0.0.1:8090` 即可。
 
-当前：`GET /health`、`POST /v1/jobs/clean`（去重 / 广告 / 过短 / 手机号与地址脱敏）。
+当前：`GET /health`、`POST /v1/jobs/clean`、`POST /v1/jobs/analyze`（情感 + 方面，方面名必须落在词典或「其它」；无 Key 时用词典规则）。

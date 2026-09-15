@@ -8,7 +8,7 @@ lumiinsight/
 ├── pnpm-workspace.yaml
 ├── apps/server/          Spring Boot 3.3 / 启动类 LumiInsightApplication
 ├── apps/web/             Vue3 + Vite + Element Plus
-├── apps/ai-worker/       清洗：/health、POST /v1/jobs/clean
+├── apps/ai-worker/       清洗/分析：/health、POST /v1/jobs/clean、POST /v1/jobs/analyze
 ├── eval/fixtures/        sample-reviews.csv（120 条）
 └── docs/ai/CODE_PROGRESS.md
 ```
@@ -43,7 +43,7 @@ lumiinsight/
 ## 核心表
 
 `sys_user` `sys_role` `sys_permission` `sys_user_role` `sys_role_permission`  
-`project` `project_member` `import_job` `review` `pipeline_job`  
+`project` `project_member` `import_job` `review` `review_aspect` `pipeline_job`  
 `llm_provider` `llm_model` `llm_route` `aspect_dict` `audit_log`
 
-Worker 路由：`GET /health`、`POST /v1/jobs/clean`（去重 / 广告 / 过短 / 脱敏）。
+Worker 路由：`GET /health`、`POST /v1/jobs/clean`（去重 / 广告 / 过短 / 脱敏）、`POST /v1/jobs/analyze`（情感 + ABSA，方面名必须落在词典或「其它」）。

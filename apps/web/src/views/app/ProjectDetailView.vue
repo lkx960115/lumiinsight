@@ -6,7 +6,8 @@
         <p class="muted">{{ project.brand }} {{ project.mainModel }} · 评论 {{ project.reviewCount }} 条</p>
       </div>
       <div class="page-actions">
-        <el-button v-permission="'pipeline:execute'" type="primary" @click="triggerClean">触发清洗</el-button>
+        <el-button v-permission="'pipeline:execute'" @click="triggerClean">触发清洗</el-button>
+        <el-button v-permission="'pipeline:execute'" type="primary" @click="triggerAnalyze">触发分析</el-button>
         <el-button @click="router.push('/app/projects')">返回列表</el-button>
       </div>
     </div>
@@ -33,10 +34,12 @@
 
     <el-card class="block">
       <template #header>分析流水线</template>
-      <p class="muted">去重、广告、过短、手机号/地址脱敏。项目计数只含有效条；列表仍展示已标记条目。</p>
+      <p class="muted">先清洗再分析。点开评论左侧箭头可看方面-情感-原因和置信度。方面名必须落在词典或「其它」。未配置模型 Key 时用词典规则，配好后台模型后可再跑一轮。</p>
       <el-table :data="pipeline.records" class="mt">
         <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="type" label="类型" width="100" />
+        <el-table-column label="类型" width="100">
+          <template #default="{ row }">{{ jobTypeLabel(row.type) }}</template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="120" />
         <el-table-column prop="message" label="说明" />
       </el-table>
@@ -55,14 +58,50 @@
         <el-button @click="loadReviews">查询</el-button>
       </div>
       <el-table :data="reviews.records">
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div v-if="row.aspects?.length" class="aspect-detail">
+              <div v-for="item in row.aspects" :key="item.name" class="aspect-line">
+                <el-tag size="small" :type="sentimentType(item.sentiment)">{{ sentimentLabel(item.sentiment) }}</el-tag>
+                <strong>{{ item.name }}</strong>
+                <span>{{ item.reason || '—' }}</span>
+                <span class="muted">置信度 {{ confText(item.confidence) }}</span>
+              </div>
+            </div>
+            <p v-else class="muted">尚未分析。请先清洗再点「触发分析」。展开本行可看方面、情感、原因和置信度。</p>
+          </template>
+        </el-table-column>
         <el-table-column prop="platform" label="平台" width="120" />
         <el-table-column prop="content" label="原文" />
-        <el-table-column label="清洗" width="180">
+        <el-table-column label="情感" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.sentiment" size="small" :type="sentimentType(row.sentiment)">
+              {{ sentimentLabel(row.sentiment) }}
+            </el-tag>
+            <span v-else class="muted">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="清洗" width="140">
           <template #default="{ row }">
             <el-tag v-for="tag in cleanTagList(row)" :key="tag" size="small" class="tag" :type="tagType(tag)">
               {{ tagLabel(tag) }}
             </el-tag>
             <span v-if="!cleanTagList(row).length" class="muted">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="cleanReason" label="清洗原因" min-width="140" show-overflow-tooltip />
+        <el-table-column label="方面" min-width="180">
+          <template #default="{ row }">
+            <el-tag
+              v-for="item in aspectDisplay(row)"
+              :key="item.name"
+              size="small"
+              class="tag"
+              :type="sentimentType(item.sentiment)"
+            >
+              {{ item.name }}{{ item.sentiment ? '·' + sentimentLabel(item.sentiment) : '' }}
+            </el-tag>
+            <span v-if="!aspectDisplay(row).length" class="muted">—</span>
           </template>
         </el-table-column>
         <el-table-column prop="reviewTime" label="时间" width="180" />
@@ -133,9 +172,35 @@ async function upload(opt: UploadRequestOptions) {
 }
 
 async function triggerClean() {
-  await http.post(`/projects/${id}/pipeline/clean`)
-  ElMessage.success('已提交清洗任务')
-  setTimeout(load, 1200)
+  await runPipeline(`/projects/${id}/pipeline/clean`, '正在清洗评论…')
+}
+
+async function triggerAnalyze() {
+  await runPipeline(`/projects/${id}/pipeline/analyze`, '正在分析情感与方面…')
+}
+
+async function runPipeline(url: string, pending: string) {
+  const beforeId = pipeline.records[0]?.id
+  await http.post(url)
+  ElMessage.success(pending)
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 400))
+    await loadPipeline()
+    const latest = pipeline.records[0]
+    if (!latest || latest.id === beforeId) {
+      continue
+    }
+    if (latest.status === 'FAILED') {
+      ElMessage.error(latest.message || '任务失败')
+      return
+    }
+    if (latest.status === 'READY') {
+      await load()
+      ElMessage.success(latest.message || '完成')
+      return
+    }
+  }
+  await load()
 }
 
 function cleanTagList(row: any): string[] {
@@ -151,15 +216,53 @@ function tagLabel(tag: string) {
     ad: '广告',
     short: '过短',
     masked: '已脱敏',
+    template: '模板好评',
   }
   return map[tag] || tag
 }
 
 function tagType(tag: string) {
   if (tag === 'ad') return 'danger'
-  if (tag === 'duplicate') return 'warning'
+  if (tag === 'duplicate' || tag === 'template') return 'warning'
   if (tag === 'short') return 'info'
   return 'success'
+}
+
+function aspectList(row: any): string[] {
+  return String(row?.aspectHits || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function aspectDisplay(row: any): { name: string; sentiment?: string }[] {
+  if (row?.aspects?.length) {
+    return row.aspects
+  }
+  return aspectList(row).map((name) => ({ name }))
+}
+
+function sentimentLabel(value: string) {
+  const map: Record<string, string> = { pos: '正向', neg: '负向', neu: '中性' }
+  return map[value] || '—'
+}
+
+function sentimentType(value: string) {
+  if (value === 'pos') return 'success'
+  if (value === 'neg') return 'danger'
+  return 'info'
+}
+
+function confText(value: unknown) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return Math.round(n * 100) + '%'
+}
+
+function jobTypeLabel(type: string) {
+  if (type === 'CLEAN') return '清洗'
+  if (type === 'ANALYZE') return '分析'
+  return type || '—'
 }
 
 async function downloadErrors(jobId: number) {
@@ -181,4 +284,6 @@ h2 { margin: 0; }
 .mt { margin-top: 12px; }
 .pager { margin-top: 12px; display: flex; justify-content: flex-end; }
 .tag { margin-right: 6px; }
+.aspect-detail { padding: 4px 12px 12px 48px; }
+.aspect-line { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
 </style>

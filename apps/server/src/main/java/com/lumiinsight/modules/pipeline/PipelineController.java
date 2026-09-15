@@ -27,6 +27,12 @@ public class PipelineController {
         return ApiResult.ok(pipelineService.triggerClean(projectId));
     }
 
+    @PostMapping("/projects/{projectId}/pipeline/analyze")
+    @PreAuthorize("hasAuthority('pipeline:execute')")
+    public ApiResult<PipelineJob> analyze(@PathVariable Long projectId) {
+        return ApiResult.ok(pipelineService.triggerAnalyze(projectId));
+    }
+
     @GetMapping("/pipeline/{jobId}")
     @PreAuthorize("hasAuthority('pipeline:execute')")
     public ApiResult<PipelineJob> get(@PathVariable Long jobId) {
