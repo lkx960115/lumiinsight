@@ -110,7 +110,7 @@ public class ReviewQueryService {
                 .build();
     }
 
-    public Page<ReviewView> page(Long projectId, long page, long size, String platform, String keyword, Integer counted) {
+    public Page<ReviewView> page(Long projectId, long page, long size, String platform, String keyword, Integer counted, String aspect) {
         projectService.requireVisible(projectId);
         LambdaQueryWrapper<Review> q = new LambdaQueryWrapper<Review>()
                 .eq(Review::getProjectId, projectId)
@@ -118,6 +118,23 @@ public class ReviewQueryService {
                 .like(StringUtils.hasText(keyword), Review::getContent, keyword)
                 .eq(counted != null, Review::getCounted, counted)
                 .orderByDesc(Review::getId);
+        if (StringUtils.hasText(aspect)) {
+            List<ReviewAspect> hits = reviewAspectMapper.selectList(
+                    new LambdaQueryWrapper<ReviewAspect>()
+                            .eq(ReviewAspect::getProjectId, projectId)
+                            .eq(ReviewAspect::getAspectName, aspect)
+            );
+            List<Long> ids = hits.stream().map(ReviewAspect::getReviewId).distinct().toList();
+            if (ids.isEmpty()) {
+                Page<ReviewView> empty = new Page<>(page, size, 0);
+                empty.setRecords(List.of());
+                return empty;
+            }
+            q.in(Review::getId, ids);
+            if (counted == null) {
+                q.eq(Review::getCounted, 1);
+            }
+        }
         Page<Review> raw = reviewMapper.selectPage(new Page<>(page, size), q);
         List<ReviewView> views = raw.getRecords().stream().map(this::toView).toList();
         fillAspects(views);

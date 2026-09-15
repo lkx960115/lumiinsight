@@ -15,8 +15,8 @@
 
     <el-card class="block">
       <template #header>评论概览</template>
-      <p class="muted">按有效评论统计，重复/广告/过短不计入图表，避免把声量放大。</p>
-      <OverviewCharts :overview="overview" />
+      <p class="muted">按有效评论统计，重复/广告/过短不计入图表。点方面条可查看对应原评。</p>
+      <OverviewCharts :overview="overview" @select-aspect="onSelectAspect" />
     </el-card>
 
     <el-card class="block">
@@ -94,6 +94,9 @@
     <el-card class="block">
       <template #header>评论列表</template>
       <div class="toolbar">
+        <el-select v-model="aspect" clearable placeholder="全部方面" style="width: 140px" @change="searchReviews">
+          <el-option v-for="item in overview?.aspects || []" :key="item.name" :label="item.name" :value="item.name" />
+        </el-select>
         <el-select v-model="platform" clearable placeholder="全部平台" style="width: 140px" @change="searchReviews">
           <el-option label="小红书" value="xiaohongshu" />
           <el-option label="京东" value="jd" />
@@ -176,10 +179,12 @@ const jobs = reactive({ records: [] as any[] })
 const pipeline = reactive({ records: [] as any[] })
 const reviews = reactive({ records: [] as any[], total: 0 })
 const platform = ref('')
+const aspect = ref('')
 const keyword = ref('')
 const reviewPage = ref(1)
 const busy = ref(false)
 const reviewEmptyText = computed(() => {
+  if (aspect.value) return '这个方面还没有原评。点图表换一个方面，或重置筛选。'
   if (platform.value || keyword.value) return '没有符合条件的评论。试试重置筛选。'
   return '还没有评论。请先导入文件，再点清洗并分析。'
 })
@@ -192,6 +197,12 @@ function searchReviews() {
 function resetReviews() {
   platform.value = ''
   keyword.value = ''
+  aspect.value = ''
+  searchReviews()
+}
+
+function onSelectAspect(name: string) {
+  aspect.value = name
   searchReviews()
 }
 
@@ -222,7 +233,13 @@ async function loadPipeline() {
 
 async function loadReviews() {
   const { data } = await http.get(`/projects/${id}/reviews`, {
-    params: { page: reviewPage.value, size: 10, platform: platform.value || undefined, keyword: keyword.value || undefined },
+    params: {
+      page: reviewPage.value,
+      size: 10,
+      platform: platform.value || undefined,
+      keyword: keyword.value || undefined,
+      aspect: aspect.value || undefined,
+    },
   })
   reviews.records = data.data.records
   reviews.total = Number(data.data.total)

@@ -28,6 +28,8 @@ export function jobStatusLabel(status?: string | null) {
     IMPORTING: '导入中',
     CLEANING: '清洗中',
     ANALYZING: '分析中',
+    INDEXING: '建立检索',
+    REPORTING: '生成报告',
     READY: '完成',
     FAILED: '失败',
   }
@@ -100,7 +102,7 @@ export function formatClock(value?: string | null) {
 }
 
 export function isRunningStatus(status?: string | null) {
-  return ['PENDING', 'IMPORTING', 'CLEANING', 'ANALYZING'].includes(String(status || ''))
+  return ['PENDING', 'IMPORTING', 'CLEANING', 'ANALYZING', 'INDEXING', 'REPORTING'].includes(String(status || ''))
 }
 
 export function friendlyMessage(raw?: string | null) {

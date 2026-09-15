@@ -75,6 +75,27 @@ public class WorkerClient {
                 .body(Map.class);
     }
 
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> embed(
+            Long jobId,
+            Long projectId,
+            List<Map<String, Object>> reviews,
+            Map<String, Object> llm
+    ) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("jobId", jobId);
+        body.put("projectId", projectId);
+        body.put("reviews", reviews);
+        body.put("llm", llm);
+        return restClient.post()
+                .uri("/v1/jobs/embed")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(Map.class);
+    }
+
     public boolean ping() {
         try {
             Map<?, ?> body = restClient.get().uri("/health").retrieve().body(Map.class);

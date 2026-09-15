@@ -45,6 +45,7 @@ type Overview = {
 }
 
 const props = defineProps<{ overview: Overview | null }>()
+const emit = defineEmits<{ 'select-aspect': [name: string] }>()
 
 const pieEl = ref<HTMLElement | null>(null)
 const barEl = ref<HTMLElement | null>(null)
@@ -60,7 +61,13 @@ const hasSentiment = computed(() => {
 })
 const hasAspects = computed(() => (props.overview?.aspects || []).some((item) => item.total > 0))
 
-type EChartsLike = { setOption: (opt: unknown, notMerge?: boolean) => void; resize: () => void; dispose: () => void }
+type EChartsLike = {
+  setOption: (opt: unknown, notMerge?: boolean) => void
+  resize: () => void
+  dispose: () => void
+  on: (event: string, handler: (params: { name?: string }) => void) => void
+  off: (event: string) => void
+}
 
 function echartsApi() {
   return (window as Window & { echarts?: { init: (el: HTMLElement) => EChartsLike } }).echarts
@@ -144,6 +151,10 @@ function render() {
   const aspects = (overview.aspects || []).filter((item) => item.total > 0).slice(0, 8)
   if (barEl.value && aspects.length) {
     barChart = barChart || api.init(barEl.value)
+    barChart.off('click')
+    barChart.on('click', (params) => {
+      if (params.name) emit('select-aspect', params.name)
+    })
     const names = aspects.map((item) => item.name).reverse()
     barChart.setOption({
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },

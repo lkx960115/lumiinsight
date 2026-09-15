@@ -115,3 +115,24 @@ def _parse_json_object(text: str) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise RuntimeError("模型 JSON 不是对象")
     return data
+
+
+def embed_texts(spec: dict[str, Any], texts: list[str]) -> tuple[list[list[float]], dict[str, int]]:
+    base = str(spec.get("baseUrl") or "").rstrip("/")
+    model = str(spec.get("model") or "").strip()
+    api_key = str(spec.get("apiKey") or "").strip()
+    if not base or not model or not api_key:
+        raise RuntimeError("模型配置不完整")
+    timeout_ms = spec.get("timeoutMs") or 60000
+    timeout = min(30, max(5, int(timeout_ms) / 1000))
+    payload = {"model": model, "input": texts}
+    raw = _post(base + "/embeddings", api_key, payload, timeout, spec.get("extraHeaders"))
+    rows = raw.get("data") or []
+    rows = sorted(rows, key=lambda item: int((item or {}).get("index") or 0))
+    vectors: list[list[float]] = []
+    for item in rows:
+        embedding = (item or {}).get("embedding") or []
+        vectors.append([float(value) for value in embedding])
+    if len(vectors) != len(texts):
+        raise RuntimeError("向量条数与评论不一致")
+    return vectors, extract_usage(raw)

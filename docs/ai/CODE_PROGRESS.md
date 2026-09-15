@@ -11,9 +11,9 @@
 
 ## 当前指针
 
-- **阶段：** W1～W2D6 已交
+- **阶段：** W3D1 已交
 - **本机 Docker：** mysql:5.7 占 3306、本机 Redis 占 6379；Docker Hub 直连会 `Service Unavailable`。用 `./scripts/compose-up.sh`（DaoCloud 镜像 + `docker pull`，避免 experimental `docker compose` 的 dockerfile.v0）。MySQL 映射 3307，Redis 映射 16379。Docker Desktop 需给 MySQL 8 / Qdrant 放开 seccomp，否则会无法建线程、反复重启。
-- **下一步：** W3D1 Embedding 入库 Qdrant + 证据表 + 按方面拉回原评
+- **下一步：** W3D2 单品报告模板（执行摘要、声量、情感、方面、原声、建议）
 - **分支：** `dev`
 - **禁止：** 四平台爬虫、报告当事实输出、把 Key 写入仓库
 
@@ -28,6 +28,7 @@
 | W2D4 | 情感 + ABSA | 已完成 |
 | W2D5 | 按用途路由多模型 | 已完成 |
 | W2D6 | 一键清洗分析、失败重试、工作台图表 | 已完成 |
+| W3D1 | 证据表、按方面拉回原评、向量写入（失败则关键词） | 已完成 |
 
 ## 本机怎么跑（避开已有容器）
 
@@ -37,6 +38,6 @@
 4. `cd apps/ai-worker && python3 app/main.py`（标准库启动，避免本机 uvicorn/pydantic 卡住）
 5. `pnpm -C apps/web dev`（本机 Vite/esbuild 会卡住，已改 WASM 打包，第一次约半分钟）
 6. 用启动日志里的 admin 密码登录（新权限 `pipeline:execute` 需重新登录）
-7. 建项目，导入样例后点「清洗并分析」。图表按有效评论统计情感饼图与方面分布。失败任务可在项目页重试，后台「任务日志」也能看到失败说明。方面情感走用途 `absa` 的主模型；主模型停用或失败时自动切备用。未配置模型 Key 时用词典规则。用量在「模型配置 → 调用记录」。改 Java 后请重启 IntelliJ；改前端后需停掉 5173 再 `node scripts/dev.mjs`，页面强制刷新。
+7. 建项目，导入样例后点「清洗并分析」。图表按有效评论统计情感饼图与方面分布。点方面条或筛选「方面」可拉回对应原评。失败任务可在项目页重试。分析完成后会写证据并尝试写入向量；没配向量模型或 Qdrant 不可用时，仍可按方面关键词找回。改 Java 后请重启 IntelliJ（Flyway 会建证据表）；改前端后需停掉 5173 再 `node scripts/dev.mjs`，页面强制刷新。
 
 健康检查：`GET /api/v1/health` 应看到 mysql/redis/qdrant/minio/worker。

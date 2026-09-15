@@ -3,6 +3,8 @@ package com.lumiinsight.modules.pipeline;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lumiinsight.modules.dict.AspectDictService;
 import com.lumiinsight.modules.dict.entity.AspectDict;
+import com.lumiinsight.modules.evidence.EvidenceService;
+import com.lumiinsight.modules.evidence.ReviewIndexService;
 import com.lumiinsight.modules.llm.LlmRuntimeService;
 import com.lumiinsight.modules.llm.LlmUsageService;
 import com.lumiinsight.modules.pipeline.entity.PipelineJob;
@@ -35,6 +37,8 @@ public class PipelineRunner {
     private final AspectDictService aspectDictService;
     private final LlmRuntimeService llmRuntimeService;
     private final LlmUsageService llmUsageService;
+    private final EvidenceService evidenceService;
+    private final ReviewIndexService reviewIndexService;
 
     public PipelineRunner(
             PipelineJobMapper pipelineJobMapper,
@@ -43,7 +47,9 @@ public class PipelineRunner {
             ReviewAspectMapper reviewAspectMapper,
             AspectDictService aspectDictService,
             LlmRuntimeService llmRuntimeService,
-            LlmUsageService llmUsageService
+            LlmUsageService llmUsageService,
+            EvidenceService evidenceService,
+            ReviewIndexService reviewIndexService
     ) {
         this.pipelineJobMapper = pipelineJobMapper;
         this.workerClient = workerClient;
@@ -52,6 +58,8 @@ public class PipelineRunner {
         this.aspectDictService = aspectDictService;
         this.llmRuntimeService = llmRuntimeService;
         this.llmUsageService = llmUsageService;
+        this.evidenceService = evidenceService;
+        this.reviewIndexService = reviewIndexService;
     }
 
     @Async("pipelineExecutor")
@@ -182,10 +190,16 @@ public class PipelineRunner {
                 copy.put("message", String.valueOf(result.getOrDefault("message", "分析完成")) + extra);
                 result = copy;
             }
-            applyAnalyzeResult(job.getProjectId(), result);
+            List<Long> reviewIds = applyAnalyzeResult(job.getProjectId(), result);
+            evidenceService.replaceForReviews(job.getProjectId(), reviewIds);
+            job.setStatus(JobStatus.INDEXING.name());
+            job.setMessage("正在建立检索，随后可按方面查看原评");
+            pipelineJobMapper.updateById(job);
+            String indexMsg = reviewIndexService.indexProject(job.getId(), job.getProjectId());
             job.setStatus(JobStatus.READY.name());
             Object msg = result == null ? null : result.get("message");
-            job.setMessage(msg == null ? "分析完成" : String.valueOf(msg));
+            String analyzeMsg = msg == null ? "分析完成" : String.valueOf(msg);
+            job.setMessage(analyzeMsg + "。" + indexMsg);
             pipelineJobMapper.updateById(job);
         } catch (Exception e) {
             log.warn("分析任务失败 jobId={}", job.getId(), e);
@@ -245,7 +259,7 @@ public class PipelineRunner {
     }
 
     @SuppressWarnings("unchecked")
-    private void applyAnalyzeResult(Long projectId, Map<String, Object> result) {
+    private List<Long> applyAnalyzeResult(Long projectId, Map<String, Object> result) {
         if (result == null || result.get("items") == null) {
             throw new IllegalStateException("Worker 未返回分析结果");
         }
@@ -300,6 +314,7 @@ public class PipelineRunner {
                 reviewAspectMapper.insert(row);
             }
         }
+        return reviewIds;
     }
 
     private static boolean usedLlm(Map<String, Object> result) {

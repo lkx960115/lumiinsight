@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 from app.absa import analyze_reviews
 from app.clean import clean_reviews
+from app.llm import embed_texts
 
 HOST = "127.0.0.1"
 PORT = 8090
@@ -67,7 +68,7 @@ class WorkerHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
-        if path not in {"/v1/jobs/clean", "/v1/jobs/analyze"}:
+        if path not in {"/v1/jobs/clean", "/v1/jobs/analyze", "/v1/jobs/embed"}:
             self._send(404, {"code": "NOT_FOUND", "message": "not found"})
             return
         raw = read_http_body(self.headers, self.rfile)
@@ -79,6 +80,44 @@ class WorkerHandler(BaseHTTPRequestHandler):
         reviews = data.get("reviews") or []
         if not isinstance(reviews, list):
             self._send(400, {"code": "BAD_REVIEWS", "message": "reviews 必须是数组"})
+            return
+        if path == "/v1/jobs/embed":
+            llm = data.get("llm") if isinstance(data.get("llm"), dict) else None
+            if not llm or not llm.get("apiKey"):
+                self._send(400, {"code": "NO_LLM", "message": "未配置向量模型"})
+                return
+            texts = []
+            ids = []
+            for row in reviews:
+                if not isinstance(row, dict) or row.get("id") is None:
+                    continue
+                content = str(row.get("content") or "").strip()
+                if not content:
+                    continue
+                ids.append(row.get("id"))
+                texts.append(content[:800])
+            if not texts:
+                self._send(200, {"code": "0", "message": "没有可写入的评论", "items": [], "dim": 0, "usage": {}})
+                return
+            try:
+                vectors, usage = embed_texts(llm, texts)
+            except Exception as exc:
+                self._send(502, {"code": "EMBED_FAILED", "message": str(exc)})
+                return
+            items = [{"id": rid, "vector": vector} for rid, vector in zip(ids, vectors)]
+            dim = len(vectors[0]) if vectors else 0
+            self._send(
+                200,
+                {
+                    "code": "0",
+                    "message": "已生成 %s 条向量" % len(items),
+                    "jobId": data.get("jobId"),
+                    "projectId": data.get("projectId"),
+                    "dim": dim,
+                    "usage": usage,
+                    "items": items,
+                },
+            )
             return
         aspects = data.get("aspects") or []
         if not isinstance(aspects, list):

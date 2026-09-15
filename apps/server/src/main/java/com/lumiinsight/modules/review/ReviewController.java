@@ -35,8 +35,9 @@ public class ReviewController {
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String platform,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Integer counted
+            @RequestParam(required = false) Integer counted,
+            @RequestParam(required = false) String aspect
     ) {
-        return ApiResult.ok(reviewQueryService.page(projectId, page, size, platform, keyword, counted));
+        return ApiResult.ok(reviewQueryService.page(projectId, page, size, platform, keyword, counted, aspect));
     }
 }
