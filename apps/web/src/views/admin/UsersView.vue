@@ -5,12 +5,24 @@
       <el-button v-permission="'admin:user:edit'" type="primary" @click="open()">新建用户</el-button>
     </div>
     <div class="panel">
-    <el-table :data="table.records">
-      <el-table-column prop="username" label="用户名" />
-      <el-table-column prop="displayName" label="显示名" />
-      <el-table-column prop="roleName" label="角色" />
-      <el-table-column label="状态" width="100">
-        <template #default="{ row }">{{ row.enabled === 1 ? '启用' : '停用' }}</template>
+      <el-table :data="table.records" empty-text="还没有用户。">
+      <el-table-column label="用户" min-width="160">
+        <template #default="{ row }">
+          <div>{{ row.username }}</div>
+          <p v-if="row.displayName && row.displayName !== row.username" class="cell-note">{{ row.displayName }}</p>
+        </template>
+      </el-table-column>
+      <el-table-column prop="roleName" label="角色" min-width="120" />
+      <el-table-column label="启用" width="100">
+        <template #default="{ row }">
+          <el-switch
+            v-model="row.enabled"
+            :active-value="1"
+            :inactive-value="0"
+            :disabled="!canEdit"
+            @change="(val) => toggle(row, val)"
+          />
+        </template>
       </el-table-column>
       <el-table-column label="操作" width="120">
         <template #default="{ row }">
@@ -43,10 +55,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '@/api/http'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
+const canEdit = computed(() => auth.has('admin:user:edit'))
 const table = reactive({ records: [] as any[] })
 const roles = ref<any[]>([])
 const visible = ref(false)
@@ -65,6 +80,20 @@ function open(row?: any) {
   if (row) Object.assign(form, { ...row, password: '' })
   else Object.assign(form, { id: null, username: '', displayName: '', password: '', roleCode: 'analyst', enabled: 1 })
   visible.value = true
+}
+
+async function toggle(row: any, enabled: number) {
+  try {
+    await http.put(`/admin/users/${row.id}`, {
+      username: row.username,
+      displayName: row.displayName,
+      roleCode: row.roleCode,
+      enabled,
+    })
+    ElMessage.success(enabled === 1 ? '已启用' : '已停用')
+  } catch {
+    row.enabled = enabled === 1 ? 0 : 1
+  }
 }
 
 async function save() {

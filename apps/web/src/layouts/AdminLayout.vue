@@ -15,7 +15,7 @@
     </el-aside>
     <el-container>
       <el-header class="app-header">
-        <span class="muted">账号、模型与任务日志</span>
+        <span class="muted">系统设置</span>
         <div>
           <el-button text @click="router.push('/app/projects')">返回工作台</el-button>
           <span class="user">{{ auth.user?.displayName }}</span>

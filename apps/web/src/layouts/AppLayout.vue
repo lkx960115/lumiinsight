@@ -6,12 +6,12 @@
         <span>工作台</span>
       </div>
       <el-menu :default-active="route.path" router>
-        <el-menu-item index="/app/projects">项目与导入</el-menu-item>
+        <el-menu-item index="/app/projects">项目</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
       <el-header class="app-header">
-        <span class="muted">评论导入与洞察</span>
+        <span class="muted">工作台</span>
         <div>
           <el-button v-if="auth.isAdmin" text @click="router.push('/admin/users')">系统管理</el-button>
           <span class="user">{{ auth.user?.displayName }}</span>

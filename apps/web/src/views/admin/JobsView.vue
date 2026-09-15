@@ -1,77 +1,115 @@
 <template>
   <div>
-    <h2>任务日志</h2>
-    <p class="muted">导入失败可下载失败行；分析失败会留下说明，可到项目里点重试。</p>
-    <el-card class="block">
-      <template #header>导入任务</template>
-      <el-table :data="imports.records">
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="projectId" label="项目" width="80" />
-        <el-table-column prop="filename" label="文件" />
-        <el-table-column prop="status" label="状态" width="120" />
-        <el-table-column prop="successRows" label="成功" width="80" />
-        <el-table-column prop="failRows" label="失败" width="80" />
-        <el-table-column prop="message" label="说明" />
-      </el-table>
-    </el-card>
-    <el-card class="block">
-      <template #header>
-        <div class="page-head" style="margin: 0">
-          <span>分析流水线</span>
-          <el-button text @click="loadPipeline">刷新</el-button>
-        </div>
-      </template>
-      <el-table :data="pipeline.records">
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="projectId" label="项目" width="80" />
-        <el-table-column label="类型" width="120">
-          <template #default="{ row }">{{ typeLabel(row.type) }}</template>
-        </el-table-column>
-        <el-table-column label="状态" width="120">
-          <template #default="{ row }">
-            <span :class="{ 'job-failed': row.status === 'FAILED' }">{{ statusLabel(row.status) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="message" label="说明" />
-        <el-table-column prop="createdAt" label="时间" width="180" />
-      </el-table>
-    </el-card>
+    <div class="page-head">
+      <div>
+        <h2>任务日志</h2>
+        <p class="muted">导入和分析跑得怎样。失败了去对应项目里重试。</p>
+      </div>
+      <div class="page-actions">
+        <el-button text @click="load">刷新</el-button>
+      </div>
+    </div>
+
+    <section class="product-section">
+      <div class="section-head">
+        <h3>导入</h3>
+      </div>
+      <div class="panel">
+        <el-table :data="imports.records" empty-text="还没有导入记录。">
+          <el-table-column label="文件" min-width="180">
+            <template #default="{ row }">{{ row.filename }}</template>
+          </el-table-column>
+          <el-table-column label="项目" min-width="140">
+            <template #default="{ row }">{{ projectName(row.projectId) }}</template>
+          </el-table-column>
+          <el-table-column label="状态" min-width="200">
+            <template #default="{ row }">
+              <span class="status-text" :class="{ 'is-ok': row.status === 'READY', 'is-bad': row.status === 'FAILED' }">
+                {{ jobStatusLabel(row.status) }}
+              </span>
+              <p class="cell-note">{{ importRemark(row) }}</p>
+            </template>
+          </el-table-column>
+          <el-table-column label="时间" width="168">
+            <template #default="{ row }">{{ formatClock(row.createdAt) }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="88">
+            <template #default="{ row }">
+              <el-button v-if="row.projectId" text @click="openProject(row.projectId)">打开</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </section>
+
+    <section class="product-section">
+      <div class="section-head">
+        <h3>分析</h3>
+      </div>
+      <div class="panel">
+        <el-table :data="pipeline.records" empty-text="还没有分析记录。">
+          <el-table-column label="类型" min-width="120">
+            <template #default="{ row }">{{ jobTypeLabel(row.type) }}</template>
+          </el-table-column>
+          <el-table-column label="项目" min-width="140">
+            <template #default="{ row }">{{ projectName(row.projectId) }}</template>
+          </el-table-column>
+          <el-table-column label="状态" min-width="220">
+            <template #default="{ row }">
+              <span class="status-text" :class="{ 'is-ok': row.status === 'READY', 'is-bad': row.status === 'FAILED' }">
+                {{ jobStatusLabel(row.status) }}
+              </span>
+              <p class="cell-note">{{ pipelineRemark(row.message) }}</p>
+            </template>
+          </el-table-column>
+          <el-table-column label="时间" width="168">
+            <template #default="{ row }">{{ formatClock(row.createdAt) }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="88">
+            <template #default="{ row }">
+              <el-button v-if="row.projectId" text @click="openProject(row.projectId)">打开</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import http from '@/api/http'
+import { formatClock, importRemark, jobStatusLabel, jobTypeLabel, pipelineRemark } from '@/utils/labels'
 
+const router = useRouter()
 const imports = reactive({ records: [] as any[] })
 const pipeline = reactive({ records: [] as any[] })
+const names = ref<Record<number, string>>({})
 
-function typeLabel(type: string) {
-  if (type === 'CLEAN') return '清洗'
-  if (type === 'ANALYZE') return '分析'
-  if (type === 'RUN') return '清洗并分析'
-  return type || '—'
+function projectName(id?: number) {
+  if (!id) return '—'
+  return names.value[id] || '项目'
 }
 
-function statusLabel(status: string) {
-  const map: Record<string, string> = {
-    PENDING: '排队中',
-    CLEANING: '清洗中',
-    ANALYZING: '分析中',
-    READY: '完成',
-    FAILED: '失败',
+function openProject(id: number) {
+  router.push(`/app/projects/${id}`)
+}
+
+async function load() {
+  const [jobRes, pipeRes, projectRes] = await Promise.all([
+    http.get('/admin/jobs', { params: { size: 50 } }),
+    http.get('/admin/pipeline', { params: { size: 50 } }),
+    http.get('/projects', { params: { page: 1, size: 100 } }),
+  ])
+  imports.records = jobRes.data.data.records
+  pipeline.records = pipeRes.data.data.records
+  const map: Record<number, string> = {}
+  for (const item of projectRes.data.data.records || []) {
+    map[item.id] = item.name
   }
-  return map[status] || status || '—'
+  names.value = map
 }
 
-async function loadPipeline() {
-  const { data } = await http.get('/admin/pipeline', { params: { size: 50 } })
-  pipeline.records = data.data.records
-}
-
-onMounted(async () => {
-  const { data } = await http.get('/admin/jobs')
-  imports.records = data.data.records
-  await loadPipeline()
-})
+onMounted(load)
 </script>

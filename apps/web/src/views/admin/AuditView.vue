@@ -1,24 +1,53 @@
 <template>
   <div>
-    <h2>操作日志</h2>
-    <el-table :data="table.records">
-      <el-table-column prop="createdAt" label="时间" width="180" />
-      <el-table-column prop="username" label="用户" width="120" />
-      <el-table-column prop="action" label="动作" width="180" />
-      <el-table-column prop="resource" label="对象" width="120" />
-      <el-table-column prop="detail" label="详情" />
-      <el-table-column prop="ip" label="IP" width="140" />
-    </el-table>
+    <div class="page-head">
+      <div>
+        <h2>操作日志</h2>
+        <p class="muted">谁在什么时候改了项目、模型和导入。</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <el-table :data="table.records" empty-text="还没有操作记录。">
+        <el-table-column label="操作" min-width="160">
+          <template #default="{ row }">
+            <div>{{ auditActionLabel(row.action) }}</div>
+            <p class="cell-note">{{ row.username || '—' }}</p>
+          </template>
+        </el-table-column>
+        <el-table-column label="对象" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ auditDetailLabel(row.action, row.detail) || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="时间" width="168">
+          <template #default="{ row }">{{ formatClock(row.createdAt) }}</template>
+        </el-table-column>
+      </el-table>
+      <el-pagination
+        v-if="table.total > 20"
+        class="pager"
+        background
+        layout="prev, pager, next"
+        :total="table.total"
+        v-model:current-page="page"
+        @current-change="load"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import http from '@/api/http'
+import { auditActionLabel, auditDetailLabel, formatClock } from '@/utils/labels'
 
-const table = reactive({ records: [] as any[] })
-onMounted(async () => {
-  const { data } = await http.get('/admin/audit')
+const page = ref(1)
+const table = reactive({ records: [] as any[], total: 0 })
+
+async function load() {
+  const { data } = await http.get('/admin/audit', { params: { page: page.value, size: 20 } })
   table.records = data.data.records
-})
+  table.total = Number(data.data.total)
+}
+
+onMounted(load)
 </script>

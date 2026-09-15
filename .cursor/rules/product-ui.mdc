@@ -1,0 +1,6 @@
+---
+description: 灯鉴工作台必须按产品标准交付，禁止工程师后台观
+alwaysApply: true
+---
+
+改页面、补展示前，必须遵守项目正本 [`docs/ai/PRODUCT_UI.md`](docs/ai/PRODUCT_UI.md)。本文件只给 Cursor 注入提醒，不要在这里单独加条款。

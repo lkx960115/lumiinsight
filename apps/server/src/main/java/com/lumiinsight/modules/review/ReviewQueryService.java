@@ -110,12 +110,13 @@ public class ReviewQueryService {
                 .build();
     }
 
-    public Page<ReviewView> page(Long projectId, long page, long size, String platform, String keyword) {
+    public Page<ReviewView> page(Long projectId, long page, long size, String platform, String keyword, Integer counted) {
         projectService.requireVisible(projectId);
         LambdaQueryWrapper<Review> q = new LambdaQueryWrapper<Review>()
                 .eq(Review::getProjectId, projectId)
                 .eq(StringUtils.hasText(platform), Review::getPlatform, platform)
                 .like(StringUtils.hasText(keyword), Review::getContent, keyword)
+                .eq(counted != null, Review::getCounted, counted)
                 .orderByDesc(Review::getId);
         Page<Review> raw = reviewMapper.selectPage(new Page<>(page, size), q);
         List<ReviewView> views = raw.getRecords().stream().map(this::toView).toList();

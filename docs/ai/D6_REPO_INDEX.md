@@ -19,6 +19,7 @@ lumiinsight/
 |------|------|
 | 技术选型 / 多模型 | 说明书第 4、8 章；D1 |
 | 能否爬虫 | D2、LOCAL_RULES；`ChannelAdapter` 空实现 |
+| 工作台长什么样 | [PRODUCT_UI.md](PRODUCT_UI.md) |
 | 三周做什么 | `docs/三周实施计划.md` + `docs/ai/CODE_PROGRESS.md` |
 | 方面词 / Excel 列 | DOMAIN_LUMI；`eval/fixtures/sample-reviews.csv` |
 | 源码入口 | 见下表 |

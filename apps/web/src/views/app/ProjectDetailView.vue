@@ -25,12 +25,21 @@
       <el-upload :show-file-list="false" :http-request="upload" accept=".xlsx,.xls,.csv">
         <el-button v-permission="'import:execute'" type="primary">选择文件导入</el-button>
       </el-upload>
-      <el-table :data="jobs.records" class="mt">
-        <el-table-column prop="filename" label="文件" />
-        <el-table-column prop="status" label="状态" width="120" />
-        <el-table-column prop="successRows" label="成功" width="80" />
-        <el-table-column prop="failRows" label="失败" width="80" />
-        <el-table-column prop="message" label="说明" />
+      <el-table :data="jobs.records" class="mt" empty-text="还没有导入记录。">
+        <el-table-column label="文件" min-width="180">
+          <template #default="{ row }">{{ row.filename }}</template>
+        </el-table-column>
+        <el-table-column label="状态" min-width="200">
+          <template #default="{ row }">
+            <span class="status-text" :class="{ 'is-ok': row.status === 'READY', 'is-bad': row.status === 'FAILED' }">
+              {{ jobStatusLabel(row.status) }}
+            </span>
+            <p v-if="importRemark(row) !== '—'" class="cell-note">{{ importRemark(row) }}</p>
+          </template>
+        </el-table-column>
+        <el-table-column label="时间" width="168">
+          <template #default="{ row }">{{ formatClock(row.createdAt) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="180">
           <template #default="{ row }">
             <el-button v-if="row.errorObjectKey" text @click="downloadErrors(row.id)">下载失败行</el-button>
@@ -51,16 +60,22 @@
     <el-card class="block">
       <template #header>分析流水线</template>
       <p class="muted">一条导入可一键清洗并分析。失败任务会留下说明，可点重试。点开评论左侧箭头可看方面-情感-原因和置信度。方面名必须落在词典或「其它」。</p>
-      <el-table :data="pipeline.records" class="mt">
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column label="类型" width="120">
+      <el-table :data="pipeline.records" class="mt" empty-text="还没有分析记录。">
+        <el-table-column label="类型" min-width="120">
           <template #default="{ row }">{{ jobTypeLabel(row.type) }}</template>
         </el-table-column>
-        <el-table-column label="状态" width="120">
-          <template #default="{ row }">{{ jobStatusLabel(row.status) }}</template>
+        <el-table-column label="状态" min-width="220">
+          <template #default="{ row }">
+            <span class="status-text" :class="{ 'is-ok': row.status === 'READY', 'is-bad': row.status === 'FAILED' }">
+              {{ jobStatusLabel(row.status) }}
+            </span>
+            <p v-if="pipelineRemark(row.message) !== '—'" class="cell-note">{{ pipelineRemark(row.message) }}</p>
+          </template>
         </el-table-column>
-        <el-table-column prop="message" label="说明" />
-        <el-table-column label="操作" width="100">
+        <el-table-column label="时间" width="168">
+          <template #default="{ row }">{{ formatClock(row.createdAt) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="88">
           <template #default="{ row }">
             <el-button
               v-if="row.status === 'FAILED'"
@@ -79,7 +94,7 @@
     <el-card class="block">
       <template #header>评论列表</template>
       <div class="toolbar">
-        <el-select v-model="platform" clearable placeholder="平台" style="width: 140px" @change="loadReviews">
+        <el-select v-model="platform" clearable placeholder="全部平台" style="width: 140px" @change="loadReviews">
           <el-option label="小红书" value="xiaohongshu" />
           <el-option label="京东" value="jd" />
           <el-option label="淘宝" value="taobao" />
@@ -88,7 +103,7 @@
         <el-input v-model="keyword" placeholder="搜索原文" style="width: 240px" @keyup.enter="loadReviews" />
         <el-button @click="loadReviews">查询</el-button>
       </div>
-      <el-table :data="reviews.records">
+      <el-table :data="reviews.records" empty-text="还没有评论。请先导入文件，再点清洗并分析。">
         <el-table-column type="expand">
           <template #default="{ row }">
             <div v-if="row.aspects?.length" class="aspect-detail">
@@ -100,43 +115,33 @@
               </div>
             </div>
             <p v-else class="muted">尚未分析。导入后点「清洗并分析」。展开本行可看方面、情感、原因和置信度。</p>
+            <p v-if="cleanTagList(row).length || row.cleanReason || row.likeCount" class="muted">
+              <template v-if="cleanTagList(row).length">清洗 {{ cleanTagList(row).map(tagLabel).join('、') }}</template>
+              <template v-if="row.cleanReason"> · {{ row.cleanReason }}</template>
+              <template v-if="row.likeCount"> · 点赞 {{ row.likeCount }}</template>
+            </p>
           </template>
         </el-table-column>
-        <el-table-column prop="platform" label="平台" width="120" />
-        <el-table-column prop="content" label="原文" />
-        <el-table-column label="情感" width="100">
+        <el-table-column label="评论" min-width="280" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.content }}</template>
+        </el-table-column>
+        <el-table-column label="平台" min-width="160">
           <template #default="{ row }">
-            <el-tag v-if="row.sentiment" size="small" :type="sentimentType(row.sentiment)">
+            <div>{{ platformLabel(row.platform) }}</div>
+            <p v-if="aspectDisplay(row).length" class="cell-note">{{ aspectDisplay(row).map((item) => item.name).join('、') }}</p>
+          </template>
+        </el-table-column>
+        <el-table-column label="情感" width="88">
+          <template #default="{ row }">
+            <span v-if="row.sentiment" class="status-text" :class="{ 'is-ok': row.sentiment === 'pos', 'is-bad': row.sentiment === 'neg' }">
               {{ sentimentLabel(row.sentiment) }}
-            </el-tag>
+            </span>
             <span v-else class="muted">—</span>
           </template>
         </el-table-column>
-        <el-table-column label="清洗" width="140">
-          <template #default="{ row }">
-            <el-tag v-for="tag in cleanTagList(row)" :key="tag" size="small" class="tag" :type="tagType(tag)">
-              {{ tagLabel(tag) }}
-            </el-tag>
-            <span v-if="!cleanTagList(row).length" class="muted">—</span>
-          </template>
+        <el-table-column label="时间" width="168">
+          <template #default="{ row }">{{ formatDateTime(row.reviewTime) }}</template>
         </el-table-column>
-        <el-table-column prop="cleanReason" label="清洗原因" min-width="140" show-overflow-tooltip />
-        <el-table-column label="方面" min-width="180">
-          <template #default="{ row }">
-            <el-tag
-              v-for="item in aspectDisplay(row)"
-              :key="item.name"
-              size="small"
-              class="tag"
-              :type="sentimentType(item.sentiment)"
-            >
-              {{ item.name }}{{ item.sentiment ? '·' + sentimentLabel(item.sentiment) : '' }}
-            </el-tag>
-            <span v-if="!aspectDisplay(row).length" class="muted">—</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="reviewTime" label="时间" width="180" />
-        <el-table-column prop="likeCount" label="点赞" width="80" />
       </el-table>
       <el-pagination
         class="pager"
@@ -157,6 +162,7 @@ import { ElMessage } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import http from '@/api/http'
 import OverviewCharts from './OverviewCharts.vue'
+import { formatClock, formatDateTime, importRemark, jobStatusLabel, jobTypeLabel, pipelineRemark, platformLabel } from '@/utils/labels'
 
 const route = useRoute()
 const router = useRouter()
@@ -282,13 +288,6 @@ function tagLabel(tag: string) {
   return map[tag] || tag
 }
 
-function tagType(tag: string) {
-  if (tag === 'ad') return 'danger'
-  if (tag === 'duplicate' || tag === 'template') return 'warning'
-  if (tag === 'short') return 'info'
-  return 'success'
-}
-
 function aspectList(row: any): string[] {
   return String(row?.aspectHits || '')
     .split(',')
@@ -320,24 +319,6 @@ function confText(value: unknown) {
   return Math.round(n * 100) + '%'
 }
 
-function jobTypeLabel(type: string) {
-  if (type === 'CLEAN') return '清洗'
-  if (type === 'ANALYZE') return '分析'
-  if (type === 'RUN') return '清洗并分析'
-  return type || '—'
-}
-
-function jobStatusLabel(status: string) {
-  const map: Record<string, string> = {
-    PENDING: '排队中',
-    CLEANING: '清洗中',
-    ANALYZING: '分析中',
-    READY: '完成',
-    FAILED: '失败',
-  }
-  return map[status] || status || '—'
-}
-
 async function downloadErrors(jobId: number) {
   const resp = await http.get(`/imports/${jobId}/errors`, { responseType: 'blob' })
   const url = URL.createObjectURL(resp.data)
@@ -350,13 +331,3 @@ async function downloadErrors(jobId: number) {
 
 onMounted(load)
 </script>
-
-<style scoped>
-h2 { margin: 0; }
-.block { margin-bottom: 16px; }
-.mt { margin-top: 12px; }
-.pager { margin-top: 12px; display: flex; justify-content: flex-end; }
-.tag { margin-right: 6px; }
-.aspect-detail { padding: 4px 12px 12px 48px; }
-.aspect-line { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-</style>

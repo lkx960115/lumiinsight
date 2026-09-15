@@ -14,5 +14,6 @@
 - LLM **必须**走可配置的多提供方，禁止把智谱 GLM 写死为唯一调用路径。
 - 采集 MVP 只做 Excel/CSV 导入；四平台适配器保持接口、返回未实现。
 - 报告结论必须带证据 ID；无证据不得当作事实输出。
+- 工作台按产品标准交付（中文、一个主操作、先结论后明细），见 [`docs/ai/PRODUCT_UI.md`](docs/ai/PRODUCT_UI.md)。
 
 详细规矩见 [`docs/ai/LOCAL_RULES.md`](docs/ai/LOCAL_RULES.md)。

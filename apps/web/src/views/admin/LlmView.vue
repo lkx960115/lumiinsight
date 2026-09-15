@@ -14,22 +14,22 @@
       <h3>分析用途</h3>
       <p class="muted">先定「这件事用哪家模型」。主模型关掉或没 Key 时，自动改用备用。</p>
       <div class="panel">
-        <el-table :data="routes" empty-text="暂无用途路由">
+        <el-table :data="routes" empty-text="还没有分析用途。">
           <el-table-column label="用途" min-width="160">
             <template #default="{ row }">
               <div class="llm-purpose">{{ purposeName(row.purposeCode) }}</div>
               <div class="muted">{{ purposeHint(row.purposeCode) }}</div>
             </template>
           </el-table-column>
-          <el-table-column label="主模型" min-width="220">
-            <template #default="{ row }">{{ modelLabel(row.primaryModelId) }}</template>
-          </el-table-column>
-          <el-table-column label="备用" min-width="200">
-            <template #default="{ row }">{{ row.backupModelId ? modelLabel(row.backupModelId) : '未设置' }}</template>
-          </el-table-column>
-          <el-table-column label="状态" width="180">
+          <el-table-column label="模型" min-width="220">
             <template #default="{ row }">
-              <el-tag size="small" :type="routeHealth(row).ok ? 'success' : 'warning'">{{ routeHealth(row).text }}</el-tag>
+              <div>{{ modelLabel(row.primaryModelId) }}</div>
+              <p class="cell-note">{{ row.backupModelId ? '备用 ' + modelLabel(row.backupModelId) : '未设备用' }}</p>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" min-width="160">
+            <template #default="{ row }">
+              <span class="status-text" :class="routeHealth(row).ok ? 'is-ok' : 'is-bad'">{{ routeHealth(row).text }}</span>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="100">
@@ -55,9 +55,13 @@
               <div class="llm-url">{{ provider.baseUrl }}</div>
             </div>
             <div class="llm-card-tags">
-              <el-tag size="small" :type="provider.enabled === 1 ? 'success' : 'info'">
-                {{ provider.enabled === 1 ? '启用' : '停用' }}
-              </el-tag>
+              <el-switch
+                v-model="provider.enabled"
+                :active-value="1"
+                :inactive-value="0"
+                :disabled="!canEdit"
+                @change="(val) => toggleProvider(provider, val)"
+              />
               <el-tag size="small" :type="provider.hasKey ? 'success' : 'warning'">
                 {{ provider.hasKey ? provider.apiKeyMasked : '未配置 Key' }}
               </el-tag>
@@ -67,9 +71,13 @@
             <div v-if="!modelsOf(provider.id).length" class="muted">还没有模型</div>
             <div v-for="model in modelsOf(provider.id)" :key="model.id" class="llm-model-chip">
               <span>{{ model.modelCode }}</span>
-              <el-tag size="small" :type="model.enabled === 1 ? 'success' : 'info'">
-                {{ model.enabled === 1 ? '启用' : '停用' }}
-              </el-tag>
+              <el-switch
+                v-model="model.enabled"
+                :active-value="1"
+                :inactive-value="0"
+                :disabled="!canEdit"
+                @change="(val) => toggleModel(model, val)"
+              />
               <el-button v-permission="'admin:llm:edit'" text @click="openModel(model)">编辑</el-button>
             </div>
           </div>
@@ -85,25 +93,24 @@
       <h3>调用记录</h3>
       <p class="muted">只记 token 用量和成败，不记 Key 和原文。</p>
       <div class="panel">
-        <el-table :data="usageRows" empty-text="还没有调用记录">
-          <el-table-column label="时间" width="180">
-            <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-          </el-table-column>
-          <el-table-column label="用途" width="120">
+        <el-table :data="usageRows" empty-text="还没有调用记录。">
+          <el-table-column label="用途" min-width="120">
             <template #default="{ row }">{{ purposeName(row.purposeCode) }}</template>
           </el-table-column>
-          <el-table-column prop="modelCode" label="模型" min-width="140" />
-          <el-table-column label="Token" width="140">
-            <template #default="{ row }">{{ row.totalTokens || 0 }}</template>
+          <el-table-column label="模型" min-width="160">
+            <template #default="{ row }">{{ row.modelCode || '—' }}</template>
           </el-table-column>
-          <el-table-column label="结果" width="100">
+          <el-table-column label="状态" min-width="200">
             <template #default="{ row }">
-              <el-tag size="small" :type="row.success === 1 ? 'success' : 'danger'">
+              <span class="status-text" :class="row.success === 1 ? 'is-ok' : 'is-bad'">
                 {{ row.success === 1 ? '成功' : '失败' }}
-              </el-tag>
+              </span>
+              <p v-if="row.detail" class="cell-note">{{ friendlyMessage(row.detail) }}</p>
             </template>
           </el-table-column>
-          <el-table-column prop="detail" label="说明" min-width="160" show-overflow-tooltip />
+          <el-table-column label="时间" width="168">
+            <template #default="{ row }">{{ formatClock(row.createdAt) }}</template>
+          </el-table-column>
         </el-table>
       </div>
     </section>
@@ -195,9 +202,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '@/api/http'
+import { useAuthStore } from '@/stores/auth'
+import { formatClock, friendlyMessage } from '@/utils/labels'
+
+const auth = useAuthStore()
+const canEdit = computed(() => auth.has('admin:llm:edit'))
 
 const PURPOSE: Record<string, { name: string; hint: string }> = {
   absa: { name: '方面情感', hint: '把评论拆成方面、正负向和原因' },
@@ -277,28 +289,6 @@ function routeHealth(row: any) {
   return { ok: false, text: '将走词典规则' }
 }
 
-function formatTime(value?: string) {
-  if (!value) return '—'
-  const raw = String(value).trim()
-  if (/[zZ]$/.test(raw) || /[+-]\d{2}:\d{2}$/.test(raw)) {
-    const date = new Date(raw)
-    if (Number.isNaN(date.getTime())) {
-      return raw.replace('T', ' ').slice(0, 19)
-    }
-    return new Intl.DateTimeFormat('sv-SE', {
-      timeZone: 'Asia/Shanghai',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    }).format(date)
-  }
-  return raw.replace('T', ' ').slice(0, 19)
-}
-
 function openProvider(row?: any) {
   if (row) Object.assign(pForm, { id: row.id, name: row.name, baseUrl: row.baseUrl, apiKey: '', enabled: row.enabled, protocol: 'openai_compat' })
   else Object.assign(pForm, { id: null, name: '', baseUrl: '', apiKey: '', enabled: 1, protocol: 'openai_compat' })
@@ -335,6 +325,39 @@ function openRoute(row: any) {
     enabled: row.enabled,
   })
   rVisible.value = true
+}
+
+async function toggleProvider(provider: any, enabled: number) {
+  try {
+    await http.put(`/admin/llm/providers/${provider.id}`, {
+      name: provider.name,
+      protocol: provider.protocol || 'openai_compat',
+      baseUrl: provider.baseUrl,
+      enabled,
+      timeoutMs: provider.timeoutMs || 60000,
+      maxRetry: provider.maxRetry ?? 1,
+    })
+    ElMessage.success(enabled === 1 ? '已启用' : '已停用')
+  } catch {
+    provider.enabled = enabled === 1 ? 0 : 1
+  }
+}
+
+async function toggleModel(model: any, enabled: number) {
+  try {
+    await http.put(`/admin/llm/models/${model.id}`, {
+      providerId: model.providerId,
+      modelCode: model.modelCode,
+      jsonMode: model.jsonMode ?? 1,
+      contextLength: model.contextLength,
+      inputPrice: model.inputPrice,
+      outputPrice: model.outputPrice,
+      enabled,
+    })
+    ElMessage.success(enabled === 1 ? '已启用' : '已停用')
+  } catch {
+    model.enabled = enabled === 1 ? 0 : 1
+  }
 }
 
 async function saveProvider() {

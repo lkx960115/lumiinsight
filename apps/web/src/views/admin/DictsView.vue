@@ -3,19 +3,28 @@
     <div class="page-head">
       <div>
         <h2>方面词典</h2>
-        <p class="muted">方面名必须落在词典或「其它」。改词后请回到项目里重新清洗，再点「触发分析」。</p>
+        <p class="muted">方面名必须落在词典或「其它」。改词后请到项目里重新清洗并分析。</p>
       </div>
       <div class="page-actions">
         <el-button v-permission="'admin:dict:edit'" type="primary" @click="open()">新增方面</el-button>
       </div>
     </div>
     <div class="panel">
-      <el-table :data="rows">
-        <el-table-column prop="sortNo" label="顺序" width="80" />
-        <el-table-column prop="name" label="方面" width="140" />
-        <el-table-column prop="keywords" label="匹配词" />
-        <el-table-column label="启用" width="80">
-          <template #default="{ row }">{{ row.enabled === 1 ? '是' : '否' }}</template>
+      <el-table :data="rows" empty-text="还没有方面，请先新增。">
+        <el-table-column label="方面" min-width="140">
+          <template #default="{ row }">{{ row.name }}</template>
+        </el-table-column>
+        <el-table-column prop="keywords" label="匹配词" min-width="200" />
+        <el-table-column label="启用" width="100">
+          <template #default="{ row }">
+            <el-switch
+              v-model="row.enabled"
+              :active-value="1"
+              :inactive-value="0"
+              :disabled="!canEdit"
+              @change="(val) => toggle(row, val)"
+            />
+          </template>
         </el-table-column>
         <el-table-column label="操作" width="100">
           <template #default="{ row }">
@@ -43,10 +52,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '@/api/http'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
+const canEdit = computed(() => auth.has('admin:dict:edit'))
 const rows = ref<any[]>([])
 const visible = ref(false)
 const form = reactive<any>({ id: null, name: '', keywords: '', sortNo: 0, enabled: 1 })
@@ -60,6 +72,20 @@ function open(row?: any) {
   if (row) Object.assign(form, { ...row })
   else Object.assign(form, { id: null, name: '', keywords: '', sortNo: 0, enabled: 1 })
   visible.value = true
+}
+
+async function toggle(row: any, enabled: number) {
+  try {
+    await http.put(`/admin/dicts/aspects/${row.id}`, {
+      name: row.name,
+      keywords: row.keywords,
+      sortNo: row.sortNo,
+      enabled,
+    })
+    ElMessage.success(enabled === 1 ? '已启用' : '已停用')
+  } catch {
+    row.enabled = enabled === 1 ? 0 : 1
+  }
 }
 
 async function save() {

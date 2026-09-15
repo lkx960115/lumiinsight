@@ -14,7 +14,7 @@
         <span>已分析</span>
       </div>
     </div>
-    <p v-if="!hasSentiment" class="muted">还没有分析结果。导入后点「清洗并分析」，图表会按有效评论统计。</p>
+    <p v-if="!hasSentiment" class="muted">还没有分析结果。导入后点「清洗并分析」。</p>
     <div v-else class="overview-grid">
       <div>
         <h3>情感分布</h3>

@@ -3,23 +3,24 @@
     <div class="page-head">
       <div>
         <h2>项目</h2>
-        <p class="muted">分析单元：品牌、型号、平台范围。采集勾选不触发拉取，数据只走导入。</p>
+        <p class="muted">按品牌、型号看评论洞察。数据来自导入，不在这里抓取平台。</p>
       </div>
       <div class="page-actions">
         <el-button v-permission="'project:edit'" type="primary" @click="openEdit()">新建项目</el-button>
       </div>
     </div>
     <div class="panel">
-    <el-table :data="table.records" v-loading="loading">
-      <el-table-column label="名称">
+    <el-table :data="table.records" v-loading="loading" empty-text="还没有项目。点右上角新建。">
+      <el-table-column label="项目" min-width="180">
         <template #default="{ row }">
           <a class="name-link" @click.prevent="router.push(`/app/projects/${row.id}`)">{{ row.name }}</a>
+          <p class="cell-note">评论 {{ row.reviewCount || 0 }} 条</p>
         </template>
       </el-table-column>
-      <el-table-column prop="brand" label="品牌" width="120" />
-      <el-table-column prop="mainModel" label="主型号" width="160" />
-      <el-table-column prop="reviewCount" label="评论数" width="100" />
-      <el-table-column label="操作" width="140" align="left">
+      <el-table-column label="品牌" min-width="180">
+        <template #default="{ row }">{{ [row.brand, row.mainModel].filter(Boolean).join(' · ') || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="140">
         <template #default="{ row }">
           <div class="row-actions">
             <el-button v-permission="'project:edit'" text @click="openEdit(row)">编辑</el-button>
