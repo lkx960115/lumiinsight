@@ -12,7 +12,9 @@
 
 ## 当前指针
 
-- **阶段：** W1 已在本机写完脚手架与数据进门；下一步是 **W2（09-21）FastAPI Worker**
+- **阶段：** W1 脚手架与数据进门（代码已交，含登录/导入/模型后台）
+- **今日（2026-09-15）验收：** W1D1 compose + Java 健康检查已在云端验证（无 Docker 时依赖为 down，app 仍 up）
+- **下一步：** 有 Docker 时联调导入；然后 W2 Worker
 - **分支：** `dev`
 - **禁止：** 四平台爬虫、报告当事实输出、把 Key 写入仓库
 
@@ -31,10 +33,12 @@
 ## 本机自检
 
 - `mvn -f apps/server/pom.xml -DskipTests compile` 通过
-- 前端依赖已用 pnpm 装入；本环境 `esbuild --version` 会挂起，**未完成 Vite 生产构建**。接续时在本机执行：`pnpm --filter lumiinsight-web build` 或 `pnpm -C apps/web dev`
-- 联调：`docker compose up -d` → 启动 Java → 看日志拿 `admin` 密码 → 打开 `http://localhost:5173`
+- `GET /api/v1/health` 返回 `{ code, message, data }`（含 mysql/redis/qdrant/minio）；无 compose 时依赖为 `down`，`app` 仍为 `up`
+- `GET /actuator/health` 为 UP（不因依赖未起而拖垮进程）
+- 无 Docker 的环境可先 `FLYWAY_ENABLED=false mvn -f apps/server/pom.xml spring-boot:run` 验健康检查；有 Docker 时保持默认 Flyway 并 `docker compose up -d`
+- 前端：`pnpm -C apps/web dev`
 
 ## 未完成 / 下一步
 
-1. 本机拉起 compose 并启动 Java，用 `eval/fixtures/sample-reviews.csv` 导入验证  
+1. 有 Docker 的机器上拉起 compose，用 `eval/fixtures/sample-reviews.csv` 导入验证  
 2. W2：`apps/ai-worker` FastAPI 骨架与清洗任务  

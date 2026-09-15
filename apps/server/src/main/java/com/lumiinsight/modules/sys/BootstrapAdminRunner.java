@@ -38,6 +38,14 @@ public class BootstrapAdminRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        try {
+            bootstrap();
+        } catch (Exception e) {
+            log.warn("跳过管理员引导（数据库未就绪）：{}", e.getMessage());
+        }
+    }
+
+    private void bootstrap() {
         Long count = userMapper.selectCount(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, "admin"));
         if (count != null && count > 0) {
             return;

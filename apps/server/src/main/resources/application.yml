@@ -10,17 +10,21 @@ spring:
     password: ${MYSQL_PASSWORD:lumiinsight}
     hikari:
       maximum-pool-size: 10
+      connection-timeout: 3000
+      initialization-fail-timeout: -1
+      validation-timeout: 2000
   data:
     redis:
       host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      timeout: 2s
   servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 55MB
   flyway:
-    enabled: true
+    enabled: ${FLYWAY_ENABLED:true}
     locations: classpath:db/migration
     encoding: UTF-8
 
@@ -32,6 +36,11 @@ management:
   endpoint:
     health:
       show-details: never
+  health:
+    db:
+      enabled: false
+    redis:
+      enabled: false
 
 mybatis-plus:
   configuration:
@@ -57,6 +66,9 @@ lumiinsight:
     bucket: ${MINIO_BUCKET:lumiinsight}
   cors:
     origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  qdrant:
+    host: ${QDRANT_HOST:127.0.0.1}
+    port: ${QDRANT_PORT:6333}
 
 logging:
   level:
