@@ -1,0 +1,88 @@
+# 本机若已有其它容器占用端口，只改宿主机映射，容器内端口不变。
+# mysql:5.7 已占 3306 时，灯鉴 MySQL 8 映射 3307，禁止复用 5.7。
+# 本机已有 Redis 占用 6379 时，灯鉴 Redis 映射 16379。
+# 默认镜像走 DaoCloud，避免直连 Docker Hub（registry-1.docker.io）超时。
+# 能直连 Docker Hub 时，在 .env 把 *_IMAGE 改回官方名即可。
+
+services:
+  mysql:
+    image: ${MYSQL_IMAGE:-docker.m.daocloud.io/library/mysql:8.0}
+    container_name: lumi-mysql
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_DATABASE: lumiinsight
+      MYSQL_USER: lumiinsight
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-lumiinsight}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-lumiinsight-root}
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password --default-time-zone=+08:00
+    security_opt:
+      - seccomp:unconfined
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    volumes:
+      - lumi-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ulumiinsight", "-plumiinsight"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: ${REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7-alpine}
+    container_name: lumi-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-16379}:6379"
+    volumes:
+      - lumi-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  qdrant:
+    image: ${QDRANT_IMAGE:-docker.m.daocloud.io/qdrant/qdrant:v1.12.4}
+    container_name: lumi-qdrant
+    restart: unless-stopped
+    environment:
+      MALLOC_CONF: background_thread:false,narenas:2
+    security_opt:
+      - seccomp:unconfined
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - lumi-qdrant-data:/qdrant/storage
+
+  minio:
+    image: ${MINIO_IMAGE:-docker.m.daocloud.io/minio/minio:RELEASE.2024-10-13T13-34-11Z}
+    container_name: lumi-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-lumiinsight}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-lumiinsight-minio}
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - lumi-minio-data:/data
+
+volumes:
+  lumi-mysql-data:
+  lumi-redis-data:
+  lumi-qdrant-data:
+  lumi-minio-data:
