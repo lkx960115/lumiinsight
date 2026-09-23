@@ -35,7 +35,7 @@ public class LlmUsageService {
         row.setCompletionTokens(asInt(usage.get("completionTokens")));
         row.setTotalTokens(asInt(usage.get("totalTokens")));
         row.setSuccess(success ? 1 : 0);
-        row.setDetail(detail);
+        row.setDetail(detail == null || detail.length() <= 255 ? detail : detail.substring(0, 255));
         row.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Shanghai")));
         llmUsageMapper.insert(row);
     }

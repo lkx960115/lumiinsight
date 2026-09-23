@@ -11,8 +11,8 @@ import { parse, compileScript, compileTemplate, compileStyle } from '@vue/compil
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const srcDir = path.join(webRoot, 'src')
-const PORT = 5173
-const API_TARGET = { hostname: '127.0.0.1', port: 8080 }
+const PORT = 8282
+const API_TARGET = { hostname: '127.0.0.1', port: 18080 }
 
 const mime = {
   '.js': 'text/javascript; charset=utf-8',
@@ -172,14 +172,14 @@ async function main() {
   await bundle()
   server.on('error', (err) => {
     if (err && err.code === 'EADDRINUSE') {
-      console.error('5173 已被占用，前端多半已经在跑。请直接打开 http://127.0.0.1:5173/login ，不要再启一份。')
+      console.error('8282 已被占用，前端多半已经在跑。请直接打开 http://127.0.0.1:8282/login ，不要再启一份。')
       process.exit(0)
     }
     console.error(err)
     process.exit(1)
   })
   server.listen(PORT, '127.0.0.1', () => {
-    console.log(`已启动 http://127.0.0.1:${PORT}  （接口代理到 http://127.0.0.1:8080）`)
+    console.log(`已启动 http://127.0.0.1:${PORT}  （接口代理到 http://127.0.0.1:18080）`)
   })
 }
 

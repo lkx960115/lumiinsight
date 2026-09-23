@@ -1,11 +1,13 @@
 package com.lumiinsight.modules.pipeline;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -93,7 +95,30 @@ public class WorkerClient {
                 .accept(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    String raw = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+                    throw new IllegalStateException(workerErrorMessage(raw, response.getStatusCode().value()));
+                })
                 .body(Map.class);
+    }
+
+    private static String workerErrorMessage(String raw, int status) {
+        String text = raw == null ? "" : raw.trim();
+        if (text.startsWith("{")) {
+            int messageAt = text.indexOf("\"message\"");
+            if (messageAt >= 0) {
+                int colon = text.indexOf(':', messageAt);
+                int firstQuote = text.indexOf('"', colon + 1);
+                int secondQuote = firstQuote >= 0 ? text.indexOf('"', firstQuote + 1) : -1;
+                if (firstQuote >= 0 && secondQuote > firstQuote) {
+                    return text.substring(firstQuote + 1, secondQuote);
+                }
+            }
+        }
+        if (!text.isBlank()) {
+            return text.length() > 240 ? text.substring(0, 240) : text;
+        }
+        return "分析服务返回 " + status;
     }
 
     public boolean ping() {

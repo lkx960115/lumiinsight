@@ -115,6 +115,9 @@ export function friendlyMessage(raw?: string | null) {
   if (/worker 不可用|connection refused|connect timed out/.test(lower)) {
     return '分析服务暂时连不上，请稍后重试'
   }
+  if (text.includes('401') || text.includes('未授权')) {
+    return '智谱未授权，请到提供方里重新粘贴 API Key'
+  }
   if (lower.includes('timeout') || lower.includes('timed out') || text.includes('超时')) {
     return '处理超时，请稍后重试'
   }

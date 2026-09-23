@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:18080}
 
 spring:
   application:
@@ -68,7 +68,7 @@ lumiinsight:
     secret-key: ${MINIO_SECRET_KEY:lumiinsight-minio}
     bucket: ${MINIO_BUCKET:lumiinsight}
   cors:
-    origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+    origins: ${CORS_ORIGINS:http://localhost:8282,http://127.0.0.1:8282}
   qdrant:
     host: ${QDRANT_HOST:127.0.0.1}
     port: ${QDRANT_PORT:6333}

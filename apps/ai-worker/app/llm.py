@@ -80,6 +80,13 @@ def _post(url: str, api_key: str, payload: dict[str, Any], timeout: float, extra
         with urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8") or "{}")
     except HTTPError as exc:
+        err_body = ""
+        try:
+            err_body = exc.read().decode("utf-8", errors="replace").strip().replace("\n", " ")[:240]
+        except Exception:
+            err_body = ""
+        if err_body:
+            raise RuntimeError("模型接口 HTTP %s：%s" % (exc.code, err_body)) from None
         raise RuntimeError("模型接口 HTTP %s" % exc.code) from None
     except URLError:
         raise RuntimeError("模型接口不可达") from None
