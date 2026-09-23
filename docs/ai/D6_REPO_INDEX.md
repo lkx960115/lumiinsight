@@ -17,7 +17,7 @@ lumiinsight/
 
 | 问题 | 去哪 |
 |------|------|
-| 技术选型 / 多模型 | 说明书第 4、8 章；D1 |
+| 技术选型 / 多模型 | 说明书第 4 章（含为何选 Qdrant 等）、第 8 章；D1 只锁表 |
 | 能否爬虫 | D2、LOCAL_RULES；`ChannelAdapter` 空实现 |
 | 工作台长什么样 | [PRODUCT_UI.md](PRODUCT_UI.md)（按钮、列表、弹窗正本） |
 | 三周做什么 | `docs/三周实施计划.md` + `docs/ai/CODE_PROGRESS.md` |
