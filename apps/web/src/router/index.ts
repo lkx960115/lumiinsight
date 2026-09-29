@@ -23,6 +23,7 @@ const router = createRouter({
         { path: '', redirect: '/admin/users' },
         { path: 'users', component: () => import('@/views/admin/UsersView.vue') },
         { path: 'llm', component: () => import('@/views/admin/LlmView.vue') },
+        { path: 'usage', component: () => import('@/views/admin/UsageView.vue') },
         { path: 'jobs', component: () => import('@/views/admin/JobsView.vue') },
         { path: 'dicts', component: () => import('@/views/admin/DictsView.vue') },
         { path: 'audit', component: () => import('@/views/admin/AuditView.vue') },

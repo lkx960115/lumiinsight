@@ -20,6 +20,12 @@
         </div>
       </el-header>
       <el-main class="app-main">
+        <div v-if="healthHint" class="run-banner is-failed">
+          <div>
+            <strong>服务异常</strong>
+            <p>{{ healthHint }}</p>
+          </div>
+        </div>
         <router-view />
       </el-main>
     </el-container>
@@ -27,13 +33,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import http from '@/api/http'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const healthHint = ref('')
 const activeMenu = computed(() => {
   if (route.path.startsWith('/app/reports')) return '/app/reports'
   if (route.path.startsWith('/app/projects')) return '/app/projects'
@@ -44,4 +52,18 @@ function onLogout() {
   auth.logout()
   router.push('/login')
 }
+
+async function checkHealth() {
+  try {
+    const { data } = await http.get('/health', { silent: true } as any)
+    const h = data.data || {}
+    if (h.mysql === 'down') healthHint.value = '数据服务暂时连不上，请稍后重试。'
+    else if (h.worker === 'down') healthHint.value = '分析服务暂时连不上。请先启动分析进程，否则清洗并分析会失败。'
+    else healthHint.value = ''
+  } catch {
+    healthHint.value = '后台暂时连不上，请确认服务已启动后再试。'
+  }
+}
+
+onMounted(checkHealth)
 </script>

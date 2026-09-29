@@ -1,9 +1,11 @@
 package com.lumiinsight.modules.llm;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lumiinsight.modules.llm.entity.LlmUsage;
 import com.lumiinsight.modules.llm.mapper.LlmUsageMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -38,6 +40,32 @@ public class LlmUsageService {
         row.setDetail(detail == null || detail.length() <= 255 ? detail : detail.substring(0, 255));
         row.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Shanghai")));
         llmUsageMapper.insert(row);
+    }
+
+    public Page<LlmUsage> page(String purpose, long page, long size) {
+        LambdaQueryWrapper<LlmUsage> q = new LambdaQueryWrapper<LlmUsage>().orderByDesc(LlmUsage::getId);
+        if (StringUtils.hasText(purpose)) {
+            q.eq(LlmUsage::getPurposeCode, purpose);
+        }
+        return llmUsageMapper.selectPage(new Page<>(page, size), q);
+    }
+
+    public Map<String, Long> summary() {
+        List<LlmUsage> rows = llmUsageMapper.selectList(new LambdaQueryWrapper<>());
+        long success = 0;
+        long tokens = 0;
+        for (LlmUsage row : rows) {
+            if (row.getSuccess() != null && row.getSuccess() == 1) {
+                success++;
+            }
+            tokens += row.getTotalTokens() == null ? 0 : row.getTotalTokens();
+        }
+        return Map.of(
+                "total", (long) rows.size(),
+                "success", success,
+                "fail", rows.size() - success,
+                "tokens", tokens
+        );
     }
 
     public List<LlmUsage> recent(int limit) {

@@ -10,6 +10,7 @@ lumiinsight/
 ├── apps/web/             Vue3 + Vite + Element Plus
 ├── apps/ai-worker/       清洗/分析：/health、POST /v1/jobs/clean、POST /v1/jobs/analyze
 ├── eval/fixtures/        sample-reviews.csv（120 条）
+├── docs/演示说明.md
 └── docs/ai/CODE_PROGRESS.md
 ```
 
@@ -22,6 +23,7 @@ lumiinsight/
 | 工作台长什么样 | [PRODUCT_UI.md](PRODUCT_UI.md)（按钮、列表、弹窗正本） |
 | 三周做什么 | `docs/三周实施计划.md` + `docs/ai/CODE_PROGRESS.md` |
 | 方面词 / Excel 列 | DOMAIN_LUMI；`eval/fixtures/sample-reviews.csv` |
+| 15 分钟演示 | `docs/演示说明.md` |
 | 源码入口 | 见下表 |
 
 ## 源码入口
@@ -35,6 +37,8 @@ lumiinsight/
 | 导入 | `modules/importdata` |
 | 评论列表 | `modules/review` |
 | 模型配置 | `modules/llm` |
+| 用量 | 前端 `/admin/usage`（`UsageView.vue`），接口仍走模型配置权限 |
+| 报告 | `modules/report`；前端 `/app/reports` |
 | 流水线 / Worker 客户端 | `modules/pipeline`；Worker：`apps/ai-worker/app/main.py` |
 | 四平台空适配器 | `modules/channel` |
 | 健康检查 | `GET /api/v1/health`、`/actuator/health` |

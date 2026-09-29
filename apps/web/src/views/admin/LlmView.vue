@@ -92,28 +92,8 @@
 
     <section class="llm-section">
       <h3>调用记录</h3>
-      <p class="muted">只记 token 用量和成败，不记 Key 和原文。</p>
-      <div class="panel">
-        <el-table :data="usageRows" empty-text="还没有调用记录。">
-          <el-table-column label="用途" min-width="120">
-            <template #default="{ row }">{{ purposeName(row.purposeCode) }}</template>
-          </el-table-column>
-          <el-table-column label="模型" min-width="160">
-            <template #default="{ row }">{{ row.modelCode || '—' }}</template>
-          </el-table-column>
-          <el-table-column label="状态" min-width="200">
-            <template #default="{ row }">
-              <span class="status-text" :class="row.success === 1 ? 'is-ok' : 'is-bad'">
-                {{ row.success === 1 ? '成功' : '失败' }}
-              </span>
-              <p v-if="row.detail" class="cell-note">{{ friendlyMessage(row.detail) }}</p>
-            </template>
-          </el-table-column>
-          <el-table-column label="时间" width="168">
-            <template #default="{ row }">{{ formatClock(row.createdAt) }}</template>
-          </el-table-column>
-        </el-table>
-      </div>
+      <p class="muted">用量单独一页，只看次数和 token，不能改。不展示 Key 和评论文本。</p>
+      <el-button @click="router.push('/admin/usage')">查看用量</el-button>
     </section>
 
     <el-dialog v-model="pVisible" :title="pForm.id ? '编辑提供方' : '新增提供方'" width="560px">
@@ -204,11 +184,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
-import { formatClock, friendlyMessage } from '@/utils/labels'
 
+const router = useRouter()
 const auth = useAuthStore()
 const canEdit = computed(() => auth.has('admin:llm:edit'))
 
@@ -223,7 +204,6 @@ const PURPOSE: Record<string, { name: string; hint: string }> = {
 const providers = ref<any[]>([])
 const models = ref<any[]>([])
 const routes = ref<any[]>([])
-const usageRows = ref<any[]>([])
 const pVisible = ref(false)
 const mVisible = ref(false)
 const rVisible = ref(false)
@@ -232,16 +212,14 @@ const mForm = reactive<any>({ id: null, providerId: null, modelCode: '', jsonMod
 const rForm = reactive<any>({ id: null, purposeCode: '', primaryModelId: null, backupModelId: null, enabled: 1 })
 
 async function load() {
-  const [p, m, r, u] = await Promise.all([
+  const [p, m, r] = await Promise.all([
     http.get('/admin/llm/providers'),
     http.get('/admin/llm/models'),
     http.get('/admin/llm/routes'),
-    http.get('/admin/llm/usage'),
   ])
   providers.value = p.data.data
   models.value = m.data.data
   routes.value = r.data.data
-  usageRows.value = u.data.data || []
 }
 
 function modelsOf(providerId: number) {

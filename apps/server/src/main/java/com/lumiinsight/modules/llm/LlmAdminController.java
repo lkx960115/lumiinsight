@@ -1,5 +1,6 @@
 package com.lumiinsight.modules.llm;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lumiinsight.common.api.ApiResult;
 import com.lumiinsight.modules.llm.dto.ModelSaveRequest;
 import com.lumiinsight.modules.llm.dto.ProviderSaveRequest;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin/llm")
@@ -95,7 +97,17 @@ public class LlmAdminController {
 
     @GetMapping("/usage")
     @PreAuthorize("hasAuthority('admin:llm:view')")
-    public ApiResult<List<LlmUsage>> usage() {
-        return ApiResult.ok(llmUsageService.recent(50));
+    public ApiResult<Page<LlmUsage>> usage(
+            @RequestParam(required = false) String purpose,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size
+    ) {
+        return ApiResult.ok(llmUsageService.page(purpose, page, size));
+    }
+
+    @GetMapping("/usage/summary")
+    @PreAuthorize("hasAuthority('admin:llm:view')")
+    public ApiResult<Map<String, Long>> usageSummary() {
+        return ApiResult.ok(llmUsageService.summary());
     }
 }

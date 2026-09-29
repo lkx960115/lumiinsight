@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { friendlyMessage } from '@/utils/labels'
 
 export interface ApiResult<T> {
   code: string
@@ -28,7 +29,9 @@ http.interceptors.response.use(
     }
     const payload = resp.data as ApiResult<unknown>
     if (payload && typeof payload === 'object' && 'code' in payload && payload.code !== '0') {
-      ElMessage.error(payload.message || '请求失败')
+      if (!(resp.config as { silent?: boolean }).silent) {
+        ElMessage.error(friendlyMessage(payload.message) || '请求失败')
+      }
       return Promise.reject(payload)
     }
     return resp
@@ -42,7 +45,9 @@ http.interceptors.response.use(
         router.push({ path: '/login', query: { redirect: router.currentRoute.value.fullPath } })
       }
     }
-    ElMessage.error(payload?.message || err.message || '网络异常')
+    if (!(err.config as { silent?: boolean } | undefined)?.silent) {
+      ElMessage.error(friendlyMessage(payload?.message || err.message) || '网络异常')
+    }
     return Promise.reject(err)
   },
 )

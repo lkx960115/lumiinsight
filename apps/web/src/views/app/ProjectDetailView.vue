@@ -15,6 +15,20 @@
       </div>
     </div>
 
+    <div v-if="busy" class="run-banner is-running">
+      <div>
+        <strong>正在处理</strong>
+        <p>清洗和分析可能要一两分钟。请不要关闭页面，完成后会自动刷新。</p>
+      </div>
+    </div>
+    <div v-else-if="latestFailed" class="run-banner is-failed">
+      <div>
+        <strong>上次没有完成</strong>
+        <p>{{ latestFailedNote }}</p>
+      </div>
+      <el-button v-permission="'pipeline:execute'" :disabled="busy" @click="retryJob(latestFailed.id)">重试</el-button>
+    </div>
+
     <el-card class="block">
       <template #header>评论概览</template>
       <p class="muted">按有效评论统计，重复/广告/过短不计入图表。点方面条可查看对应原评。</p>
@@ -24,9 +38,12 @@
     <el-card class="block">
       <template #header>导入评论（Excel / CSV）</template>
       <p class="muted">模板列：平台、原文（必填），时间、商品ID、评论ID、点赞、作者匿名ID、商品名、链接。导入成功后可点「清洗并分析」。</p>
-      <el-upload :show-file-list="false" :http-request="upload" accept=".xlsx,.xls,.csv">
-        <el-button v-permission="'import:execute'" type="primary">选择文件导入</el-button>
-      </el-upload>
+      <div class="toolbar">
+        <el-button text tag="a" href="/sample-reviews.csv" download>下载样例</el-button>
+        <el-upload :show-file-list="false" :http-request="upload" accept=".xlsx,.xls,.csv">
+          <el-button v-permission="'import:execute'" type="primary">选择文件导入</el-button>
+        </el-upload>
+      </div>
       <el-table :data="jobs.records" class="mt" empty-text="还没有导入记录。">
         <el-table-column label="文件" min-width="180">
           <template #default="{ row }">{{ row.filename }}</template>
@@ -170,7 +187,7 @@ import { ElMessage } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import http from '@/api/http'
 import OverviewCharts from './OverviewCharts.vue'
-import { formatClock, formatDateTime, importRemark, jobStatusLabel, jobTypeLabel, pipelineRemark, platformLabel } from '@/utils/labels'
+import { formatClock, formatDateTime, friendlyMessage, importRemark, jobStatusLabel, jobTypeLabel, pipelineRemark, platformLabel } from '@/utils/labels'
 
 const route = useRoute()
 const router = useRouter()
@@ -186,6 +203,14 @@ const keyword = ref('')
 const reviewPage = ref(1)
 const busy = ref(false)
 const latestReport = ref<any>(null)
+const latestFailed = computed(() => {
+  const row = pipeline.records[0]
+  return row?.status === 'FAILED' ? row : null
+})
+const latestFailedNote = computed(() => {
+  const note = pipelineRemark(latestFailed.value?.message)
+  return !note || note === '—' ? '请点重试，或先确认分析服务已启动。' : note
+})
 const reviewEmptyText = computed(() => {
   if (aspect.value) return '这个方面还没有原评。点图表换一个方面，或重置筛选。'
   if (platform.value || keyword.value) return '没有符合条件的评论。试试重置筛选。'
@@ -312,7 +337,7 @@ async function runPipeline(url: string, pending: string, longWait: boolean) {
         continue
       }
       if (latest.status === 'FAILED') {
-        ElMessage.error(latest.message || '任务失败')
+        ElMessage.error(friendlyMessage(latest.message) || '任务失败')
         await load()
         return
       }

@@ -573,6 +573,13 @@ h2 {
   background: #e7efe9;
 }
 
+.guide-steps {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
 .review-copy {
   line-height: 1.6;
 }

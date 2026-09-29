@@ -6,6 +6,7 @@
         <p class="muted">按品牌、型号看评论洞察。数据来自导入，不在这里抓取平台。</p>
       </div>
       <div class="page-actions">
+        <el-button text @click="guideVisible = true">怎么走一遍</el-button>
         <el-button v-permission="'project:edit'" type="primary" @click="openEdit()">新建项目</el-button>
       </div>
     </div>
@@ -75,6 +76,21 @@
         <el-button type="primary" @click="save">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="guideVisible" title="怎么走一遍" width="560px">
+      <ol class="guide-steps">
+        <li>新建项目，填品牌和主型号。</li>
+        <li>进入项目，下载样例或用自己的 Excel/CSV 导入。</li>
+        <li>点「清洗并分析」，等一两分钟，不要关页面。</li>
+        <li>看图表和原评；侧栏「报告」打开结论，点「查看原评」核对原文。</li>
+        <li>需要带走时，在报告页导出表格或文稿。</li>
+      </ol>
+      <p class="muted">分析服务未启动、或还没配模型 Key 时，会提示失败或按词典降级，不要当成系统坏了。</p>
+      <template #footer>
+        <el-button @click="guideVisible = false">关闭</el-button>
+        <el-button v-permission="'project:edit'" type="primary" @click="guideThenCreate">去新建项目</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -90,6 +106,7 @@ const loading = ref(false)
 const page = ref(1)
 const table = reactive({ records: [] as any[], total: 0 })
 const visible = ref(false)
+const guideVisible = ref(false)
 const competitorsText = ref('')
 const keywordsText = ref('')
 const form = reactive<any>({
@@ -110,6 +127,11 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function guideThenCreate() {
+  guideVisible.value = false
+  openEdit()
 }
 
 function openEdit(row?: any) {

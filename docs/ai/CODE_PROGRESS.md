@@ -11,8 +11,8 @@
 
 ## 当前指针
 
-- **阶段：** W3D4 报告可导出表格和文稿
-- **下一步：** W3D5 演示打磨（操作说明、失败提示、用量只读、15 分钟演示）
+- **阶段：** W3D5 演示打磨已交
+- **下一步：** 缓冲（修演示缺陷、文档已回写 D4/D5/D6；第 4 周 P1 见三周计划）
 - **本机 Docker：** mysql:5.7 占 3306、本机 Redis 占 6379；Docker Hub 直连会 `Service Unavailable`。用 `./scripts/compose-up.sh`（DaoCloud 镜像 + `docker pull`，避免 experimental `docker compose` 的 dockerfile.v0）。MySQL 映射 3307，Redis 映射 16379。Docker Desktop 需给 MySQL 8 / Qdrant 放开 seccomp，否则会无法建线程、反复重启。
 - **分支：** `dev`
 - **禁止：** 四平台爬虫、报告当事实输出、把 Key 写入仓库
@@ -35,6 +35,7 @@
 | W3D1 | 证据表、按方面拉回原评、向量写入（失败则关键词） | 已完成 |
 | W3D2–D3 | 单品报告（摘要/声量/情感/方面/原声/建议），结论必须带原评 | 已完成 |
 | W3D4 | 报告导出表格和文稿，含引用编号 | 已完成 |
+| W3D5 | 操作说明、失败提示、用量只读、15 分钟演示 | 已完成 |
 
 ## 本机怎么跑（避开已有容器）
 
@@ -44,6 +45,6 @@
 4. `cd apps/ai-worker && python3 app/main.py`（标准库启动，避免本机 uvicorn/pydantic 卡住）
 5. `pnpm -C apps/web dev`（本机 Vite/esbuild 会卡住，已改 WASM 打包，第一次约半分钟）
 6. 用启动日志里的 admin 密码登录（新权限需重新登录，如 `pipeline:execute`、`report:view`）
-7. 建项目，导入样例后点「清洗并分析」。完成后可在侧栏「报告」或项目页「打开报告」看结论；点「原评」回看原文。没配向量模型时按方面找回仍走库表。新权限需重新登录。改 Java 后请重启；改前端后停掉 8282 再启。
+7. 建项目，导入样例后点「清洗并分析」。完成后可在侧栏「报告」或项目页「打开报告」看结论；点「查看原评」回看原文。没配向量模型时按方面找回仍走库表。新权限需重新登录。改 Java 后请重启；改前端后停掉 8282 再启。演示步骤见 `docs/演示说明.md`。
 
-健康检查：`GET /api/v1/health` 应看到 mysql/redis/qdrant/minio/worker。
+健康检查：`GET /api/v1/health` 应看到 mysql/redis/qdrant/minio/worker。用量：系统管理 → 用量。

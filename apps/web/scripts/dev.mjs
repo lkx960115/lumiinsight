@@ -22,6 +22,7 @@ const mime = {
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.png': 'image/png',
+  '.csv': 'text/csv; charset=utf-8',
   '.woff2': 'font/woff2',
 }
 

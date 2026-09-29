@@ -8,7 +8,8 @@ User/RBAC
           │                                    └── AnalysisResult ──► Aspect
           ├── LlmRoute（分析时读取，不反向依赖项目）
           ├── Evidence ◄── Review + ReportSection
-          └── Report
+          └── Report ──► 导出表格/文稿
+LlmRoute ──► LlmUsage（只读展示，不回写报告）
 ```
 
 ## 连锁
@@ -20,5 +21,7 @@ User/RBAC
 | Review 删除 | 必须级联或阻断：证据、向量、报告引用 |
 | 项目删除 | 导入文件、评论、报告一并策略删除（高风险） |
 | 提供方 Key | 不改历史报告，只影响新调用 |
+| 报告导出 | 表格含结论/引用两张表；文稿带引用编号。导出失败先重启后台 |
+| 用量 | 只读；不展示 Key 和评论文本 |
 
 表结构：见 [D6](D6_REPO_INDEX.md) 核心表。逻辑依赖仍如上图。
