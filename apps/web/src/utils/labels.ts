@@ -15,6 +15,13 @@ export function platformListLabel(codes?: string[] | null) {
   return codes.map((code) => platformLabel(code)).join('、')
 }
 
+export function sentimentLabel(code?: string | null) {
+  if (code === 'pos') return '正向'
+  if (code === 'neg') return '负向'
+  if (code === 'neu') return '中性'
+  return '—'
+}
+
 export function jobTypeLabel(type?: string | null) {
   if (type === 'CLEAN') return '清洗'
   if (type === 'ANALYZE') return '分析'
@@ -61,6 +68,7 @@ export function auditActionLabel(action?: string | null) {
     'pipeline.analyze': '分析评论',
     'pipeline.run': '清洗并分析',
     'pipeline.retry': '重试分析',
+    'report.generate': '生成报告',
     'llm.provider.save': '保存模型提供方',
     'llm.model.save': '保存模型',
     'llm.route.save': '设置分析用途',

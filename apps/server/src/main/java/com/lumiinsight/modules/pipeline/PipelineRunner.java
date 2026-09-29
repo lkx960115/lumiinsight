@@ -5,6 +5,7 @@ import com.lumiinsight.modules.dict.AspectDictService;
 import com.lumiinsight.modules.dict.entity.AspectDict;
 import com.lumiinsight.modules.evidence.EvidenceService;
 import com.lumiinsight.modules.evidence.ReviewIndexService;
+import com.lumiinsight.modules.report.ReportService;
 import com.lumiinsight.modules.llm.LlmRuntimeService;
 import com.lumiinsight.modules.llm.LlmUsageService;
 import com.lumiinsight.modules.pipeline.entity.PipelineJob;
@@ -39,6 +40,7 @@ public class PipelineRunner {
     private final LlmUsageService llmUsageService;
     private final EvidenceService evidenceService;
     private final ReviewIndexService reviewIndexService;
+    private final ReportService reportService;
 
     public PipelineRunner(
             PipelineJobMapper pipelineJobMapper,
@@ -49,7 +51,8 @@ public class PipelineRunner {
             LlmRuntimeService llmRuntimeService,
             LlmUsageService llmUsageService,
             EvidenceService evidenceService,
-            ReviewIndexService reviewIndexService
+            ReviewIndexService reviewIndexService,
+            ReportService reportService
     ) {
         this.pipelineJobMapper = pipelineJobMapper;
         this.workerClient = workerClient;
@@ -60,6 +63,7 @@ public class PipelineRunner {
         this.llmUsageService = llmUsageService;
         this.evidenceService = evidenceService;
         this.reviewIndexService = reviewIndexService;
+        this.reportService = reportService;
     }
 
     @Async("pipelineExecutor")
@@ -196,10 +200,14 @@ public class PipelineRunner {
             job.setMessage("正在建立检索，随后可按方面查看原评");
             pipelineJobMapper.updateById(job);
             String indexMsg = reviewIndexService.indexProject(job.getId(), job.getProjectId());
+            job.setStatus(JobStatus.REPORTING.name());
+            job.setMessage("正在生成报告");
+            pipelineJobMapper.updateById(job);
+            String reportMsg = reportService.generateAfterAnalyze(job.getProjectId(), job.getCreatedBy());
             job.setStatus(JobStatus.READY.name());
             Object msg = result == null ? null : result.get("message");
             String analyzeMsg = msg == null ? "分析完成" : String.valueOf(msg);
-            job.setMessage(analyzeMsg + "。" + indexMsg);
+            job.setMessage(analyzeMsg + "。" + indexMsg + "。" + reportMsg);
             pipelineJobMapper.updateById(job);
         } catch (Exception e) {
             log.warn("分析任务失败 jobId={}", job.getId(), e);

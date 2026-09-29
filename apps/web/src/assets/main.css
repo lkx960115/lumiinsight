@@ -631,6 +631,30 @@ h2 {
   border-top: 1px solid var(--line);
 }
 
+.report-claim {
+  padding: 12px 0;
+}
+
+.report-claim + .report-claim {
+  border-top: 1px solid var(--line);
+}
+
+.report-claim p {
+  margin: 0 0 8px;
+}
+
+.report-quote {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.report-evidence-item + .report-evidence-item {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
 @media (max-width: 900px) {
   .overview-stats,
   .overview-grid {

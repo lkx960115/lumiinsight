@@ -41,6 +41,10 @@ public class ReviewQueryService {
 
     public ProjectOverview overview(Long projectId) {
         projectService.requireVisible(projectId);
+        return overviewUnchecked(projectId);
+    }
+
+    public ProjectOverview overviewUnchecked(Long projectId) {
         long imported = reviewMapper.selectCount(
                 new LambdaQueryWrapper<Review>().eq(Review::getProjectId, projectId)
         );

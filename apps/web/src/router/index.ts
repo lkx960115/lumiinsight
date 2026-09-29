@@ -12,6 +12,8 @@ const router = createRouter({
         { path: '', redirect: '/app/projects' },
         { path: 'projects', component: () => import('@/views/app/ProjectListView.vue') },
         { path: 'projects/:id', component: () => import('@/views/app/ProjectDetailView.vue') },
+        { path: 'reports', component: () => import('@/views/app/ReportListView.vue') },
+        { path: 'reports/:id', component: () => import('@/views/app/ReportDetailView.vue') },
       ],
     },
     {

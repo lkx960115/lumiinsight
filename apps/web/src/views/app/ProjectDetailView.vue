@@ -6,6 +6,8 @@
         <p class="muted">{{ project.brand }} {{ project.mainModel }} · 评论 {{ project.reviewCount }} 条</p>
       </div>
       <div class="page-actions">
+        <el-button v-if="latestReport" text @click="router.push(`/app/reports/${latestReport.id}`)">打开报告</el-button>
+        <el-button v-permission="'report:generate'" :disabled="busy" @click="generateReport">生成报告</el-button>
         <el-button v-permission="'pipeline:execute'" :disabled="busy" @click="triggerClean">仅清洗</el-button>
         <el-button v-permission="'pipeline:execute'" :disabled="busy" @click="triggerAnalyze">仅分析</el-button>
         <el-button v-permission="'pipeline:execute'" type="primary" :disabled="busy" @click="triggerRun">清洗并分析</el-button>
@@ -183,6 +185,7 @@ const aspect = ref('')
 const keyword = ref('')
 const reviewPage = ref(1)
 const busy = ref(false)
+const latestReport = ref<any>(null)
 const reviewEmptyText = computed(() => {
   if (aspect.value) return '这个方面还没有原评。点图表换一个方面，或重置筛选。'
   if (platform.value || keyword.value) return '没有符合条件的评论。试试重置筛选。'
@@ -209,7 +212,7 @@ function onSelectAspect(name: string) {
 async function load() {
   const { data } = await http.get(`/projects/${id}`)
   project.value = data.data
-  await Promise.all([loadJobs(), loadPipeline(), loadReviews(), loadOverview()])
+  await Promise.all([loadJobs(), loadPipeline(), loadReviews(), loadOverview(), loadLatestReport()])
 }
 
 async function loadOverview() {
@@ -218,6 +221,15 @@ async function loadOverview() {
     overview.value = data.data
   } catch {
     overview.value = null
+  }
+}
+
+async function loadLatestReport() {
+  try {
+    const { data } = await http.get(`/projects/${id}/reports/latest`)
+    latestReport.value = data.data
+  } catch {
+    latestReport.value = null
   }
 }
 
@@ -251,6 +263,18 @@ async function upload(opt: UploadRequestOptions) {
   await http.post(`/projects/${id}/imports`, form)
   ElMessage.success('已提交导入任务')
   setTimeout(load, 800)
+}
+
+async function generateReport() {
+  if (busy.value) return
+  busy.value = true
+  try {
+    const { data } = await http.post(`/projects/${id}/reports`)
+    ElMessage.success('已生成报告')
+    router.push(`/app/reports/${data.data.id}`)
+  } finally {
+    busy.value = false
+  }
 }
 
 async function triggerClean() {

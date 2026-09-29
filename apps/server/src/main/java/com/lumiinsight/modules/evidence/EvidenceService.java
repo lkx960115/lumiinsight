@@ -74,6 +74,14 @@ public class EvidenceService {
         }
     }
 
+    public List<Evidence> listByProject(Long projectId) {
+        return evidenceMapper.selectList(
+                new LambdaQueryWrapper<Evidence>()
+                        .eq(Evidence::getProjectId, projectId)
+                        .orderByDesc(Evidence::getId)
+        );
+    }
+
     public Page<EvidenceView> page(Long projectId, String aspect, long page, long size) {
         projectService.requireVisible(projectId);
         LambdaQueryWrapper<Evidence> q = new LambdaQueryWrapper<Evidence>()

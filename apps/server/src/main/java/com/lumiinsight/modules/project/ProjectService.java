@@ -99,6 +99,13 @@ public class ProjectService {
         auditService.record("project.delete", "project", project.getName());
     }
 
+    public List<Long> visibleProjectIdsForCurrent() {
+        if (SecurityUtils.isAdmin()) {
+            return null;
+        }
+        return visibleProjectIds(SecurityUtils.requireUser().getUserId());
+    }
+
     public Project requireVisible(Long id) {
         Project project = projectMapper.selectById(id);
         if (project == null) {
