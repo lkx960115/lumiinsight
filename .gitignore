@@ -33,6 +33,7 @@ venv/
 # node
 node_modules/
 dist/
+.lumi-dev/
 .pnpm-store/
 
 # data / local runtime
