@@ -69,6 +69,7 @@ export function auditActionLabel(action?: string | null) {
     'pipeline.run': '清洗并分析',
     'pipeline.retry': '重试分析',
     'report.generate': '生成报告',
+    'report.export': '导出报告',
     'llm.provider.save': '保存模型提供方',
     'llm.model.save': '保存模型',
     'llm.route.save': '设置分析用途',

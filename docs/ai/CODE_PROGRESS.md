@@ -11,8 +11,8 @@
 
 ## 当前指针
 
-- **阶段：** W3D3 结论带证据的单品报告已交
-- **下一步：** W3D4 导出 Excel / Markdown
+- **阶段：** W3D4 报告可导出表格和文稿
+- **下一步：** W3D5 演示打磨（操作说明、失败提示、用量只读、15 分钟演示）
 - **本机 Docker：** mysql:5.7 占 3306、本机 Redis 占 6379；Docker Hub 直连会 `Service Unavailable`。用 `./scripts/compose-up.sh`（DaoCloud 镜像 + `docker pull`，避免 experimental `docker compose` 的 dockerfile.v0）。MySQL 映射 3307，Redis 映射 16379。Docker Desktop 需给 MySQL 8 / Qdrant 放开 seccomp，否则会无法建线程、反复重启。
 - **分支：** `dev`
 - **禁止：** 四平台爬虫、报告当事实输出、把 Key 写入仓库
@@ -34,6 +34,7 @@
 | W2D6 | 一键清洗分析、失败重试、工作台图表 | 已完成 |
 | W3D1 | 证据表、按方面拉回原评、向量写入（失败则关键词） | 已完成 |
 | W3D2–D3 | 单品报告（摘要/声量/情感/方面/原声/建议），结论必须带原评 | 已完成 |
+| W3D4 | 报告导出表格和文稿，含引用编号 | 已完成 |
 
 ## 本机怎么跑（避开已有容器）
 

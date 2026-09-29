@@ -44,6 +44,7 @@ public class ReportService {
     private final ReviewQueryService reviewQueryService;
     private final ReviewMapper reviewMapper;
     private final ReportComposer reportComposer;
+    private final ReportExporter reportExporter;
     private final ObjectMapper objectMapper;
     private final AuditService auditService;
 
@@ -55,6 +56,7 @@ public class ReportService {
             ReviewQueryService reviewQueryService,
             ReviewMapper reviewMapper,
             ReportComposer reportComposer,
+            ReportExporter reportExporter,
             ObjectMapper objectMapper,
             AuditService auditService
     ) {
@@ -65,6 +67,7 @@ public class ReportService {
         this.reviewQueryService = reviewQueryService;
         this.reviewMapper = reviewMapper;
         this.reportComposer = reportComposer;
+        this.reportExporter = reportExporter;
         this.objectMapper = objectMapper;
         this.auditService = auditService;
     }
@@ -126,6 +129,13 @@ public class ReportService {
         }
         projectService.requireVisible(row.getProjectId());
         return toDetail(row);
+    }
+
+    public ReportExporter.File export(Long id, String format) {
+        ReportView view = detail(id);
+        ReportExporter.File file = reportExporter.export(view, format);
+        auditService.record("report.export", "report", view.getTitle());
+        return file;
     }
 
     private ReportView persist(Long projectId, Long userId) {
