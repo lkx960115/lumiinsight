@@ -12,8 +12,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -61,17 +62,29 @@ public class ReportExporter {
             }
         }
         List<ReportCiteExportRow> cites = citeRows(report, numbers);
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        ExcelWriter writer = EasyExcel.write(out).autoCloseStream(false).build();
+        Path tmp = null;
         try {
-            WriteSheet claimSheet = EasyExcel.writerSheet(0, "结论").head(ReportClaimExportRow.class).build();
-            writer.write(claims, claimSheet);
-            WriteSheet citeSheet = EasyExcel.writerSheet(1, "引用").head(ReportCiteExportRow.class).build();
-            writer.write(cites, citeSheet);
+            tmp = Files.createTempFile("lumi-report-", ".xlsx");
+            ExcelWriter writer = EasyExcel.write(tmp.toFile()).inMemory(true).build();
+            try {
+                WriteSheet claimSheet = EasyExcel.writerSheet(0, "结论").head(ReportClaimExportRow.class).build();
+                writer.write(claims, claimSheet);
+                WriteSheet citeSheet = EasyExcel.writerSheet(1, "引用").head(ReportCiteExportRow.class).build();
+                writer.write(cites, citeSheet);
+            } finally {
+                writer.finish();
+            }
+            return Files.readAllBytes(tmp);
+        } catch (Exception e) {
+            throw BizException.of("INTERNAL", "导出表格失败，请重试");
         } finally {
-            writer.finish();
+            if (tmp != null) {
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (Exception ignored) {
+                }
+            }
         }
-        return out.toByteArray();
     }
 
     private String markdown(ReportView report, Map<Long, Integer> numbers) {
