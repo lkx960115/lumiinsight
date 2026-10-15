@@ -147,8 +147,13 @@ public class ReportService {
         if (evidence.isEmpty()) {
             throw BizException.of("NO_EVIDENCE", "还没有证据。请先清洗并分析，再生成报告。");
         }
+        List<Review> countedReviews = reviewMapper.selectList(
+                new LambdaQueryWrapper<Review>()
+                        .eq(Review::getProjectId, projectId)
+                        .eq(Review::getCounted, 1)
+        );
         ProjectOverview overview = reviewQueryService.overviewUnchecked(projectId);
-        List<ReportView.Section> sections = reportComposer.compose(project, overview, evidence);
+        List<ReportView.Section> sections = reportComposer.compose(project, overview, evidence, countedReviews);
         sections = keepOnlyProven(sections, evidence);
         if (sections.isEmpty()) {
             throw BizException.of("NO_EVIDENCE", "结论没有可用原评，不能生成报告。");

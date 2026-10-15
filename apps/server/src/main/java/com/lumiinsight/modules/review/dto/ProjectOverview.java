@@ -15,12 +15,22 @@ public class ProjectOverview {
     private long neg;
     private long neu;
     private List<AspectItem> aspects;
+    private List<MonthItem> months;
 
     @Data
     @Builder
     public static class AspectItem {
         private String name;
         private long total;
+        private long pos;
+        private long neg;
+        private long neu;
+    }
+
+    @Data
+    @Builder
+    public static class MonthItem {
+        private String label;
         private long pos;
         private long neg;
         private long neu;

@@ -103,6 +103,31 @@ public class ReviewQueryService {
                     .build());
         }
         aspects.sort(Comparator.comparingLong(ProjectOverview.AspectItem::getTotal).reversed());
+        List<ProjectOverview.MonthItem> months = new ArrayList<>();
+        Map<String, long[]> byMonth = new java.util.TreeMap<>();
+        for (Review review : counted) {
+            if (review.getReviewTime() == null || !StringUtils.hasText(review.getSentiment())) {
+                continue;
+            }
+            String key = review.getReviewTime().getYear() + "-" + String.format("%02d", review.getReviewTime().getMonthValue());
+            long[] bucket = byMonth.computeIfAbsent(key, ignored -> new long[3]);
+            if ("pos".equals(review.getSentiment())) {
+                bucket[0]++;
+            } else if ("neg".equals(review.getSentiment())) {
+                bucket[1]++;
+            } else {
+                bucket[2]++;
+            }
+        }
+        for (Map.Entry<String, long[]> entry : byMonth.entrySet()) {
+            long[] bucket = entry.getValue();
+            months.add(ProjectOverview.MonthItem.builder()
+                    .label(entry.getKey())
+                    .pos(bucket[0])
+                    .neg(bucket[1])
+                    .neu(bucket[2])
+                    .build());
+        }
         return ProjectOverview.builder()
                 .imported(imported)
                 .counted(counted.size())
@@ -111,6 +136,7 @@ public class ReviewQueryService {
                 .neg(neg)
                 .neu(neu)
                 .aspects(aspects)
+                .months(months)
                 .build();
     }
 
@@ -145,6 +171,31 @@ public class ReviewQueryService {
         Page<ReviewView> out = new Page<>(raw.getCurrent(), raw.getSize(), raw.getTotal());
         out.setRecords(views);
         return out;
+    }
+
+    public List<ReviewView> viewsInOrder(Long projectId, List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<Review> rows = reviewMapper.selectList(
+                new LambdaQueryWrapper<Review>()
+                        .eq(Review::getProjectId, projectId)
+                        .eq(Review::getCounted, 1)
+                        .in(Review::getId, ids)
+        );
+        Map<Long, Review> byId = new HashMap<>();
+        for (Review row : rows) {
+            byId.put(row.getId(), row);
+        }
+        List<ReviewView> views = new ArrayList<>();
+        for (Long id : ids) {
+            Review row = byId.get(id);
+            if (row != null) {
+                views.add(toView(row));
+            }
+        }
+        fillAspects(views);
+        return views;
     }
 
     private void fillAspects(List<ReviewView> views) {

@@ -2,6 +2,7 @@ package com.lumiinsight.modules.review;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lumiinsight.common.api.ApiResult;
+import com.lumiinsight.modules.evidence.SemanticReviewService;
 import com.lumiinsight.modules.review.dto.ProjectOverview;
 import com.lumiinsight.modules.review.dto.ReviewView;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,9 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReviewController {
 
     private final ReviewQueryService reviewQueryService;
+    private final SemanticReviewService semanticReviewService;
 
-    public ReviewController(ReviewQueryService reviewQueryService) {
+    public ReviewController(ReviewQueryService reviewQueryService, SemanticReviewService semanticReviewService) {
         this.reviewQueryService = reviewQueryService;
+        this.semanticReviewService = semanticReviewService;
     }
 
     @GetMapping("/overview")
@@ -39,5 +42,16 @@ public class ReviewController {
             @RequestParam(required = false) String aspect
     ) {
         return ApiResult.ok(reviewQueryService.page(projectId, page, size, platform, keyword, counted, aspect));
+    }
+
+    @GetMapping("/reviews/semantic")
+    @PreAuthorize("hasAuthority('review:view')")
+    public ApiResult<Page<ReviewView>> semantic(
+            @PathVariable Long projectId,
+            @RequestParam String q,
+            @RequestParam(required = false) String platform,
+            @RequestParam(required = false) String aspect
+    ) {
+        return ApiResult.ok(semanticReviewService.search(projectId, q, platform, aspect));
     }
 }

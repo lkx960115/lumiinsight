@@ -4,6 +4,9 @@ import com.lumiinsight.modules.evidence.entity.Evidence;
 import com.lumiinsight.modules.project.entity.Project;
 import com.lumiinsight.modules.report.dto.ReportView;
 import com.lumiinsight.modules.review.dto.ProjectOverview;
+import com.lumiinsight.modules.review.entity.Review;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -20,6 +23,11 @@ import java.util.stream.Collectors;
 @Component
 public class ReportComposer {
 
+    private final ObjectMapper objectMapper;
+
+    public ReportComposer(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
     public ReportView.Snapshot snapshotOf(ProjectOverview overview) {
         return ReportView.Snapshot.builder()
                 .imported(overview.getImported())
@@ -31,7 +39,7 @@ public class ReportComposer {
                 .build();
     }
 
-    public List<ReportView.Section> compose(Project project, ProjectOverview overview, List<Evidence> evidence) {
+    public List<ReportView.Section> compose(Project project, ProjectOverview overview, List<Evidence> evidence, List<Review> countedReviews) {
         Set<Long> allowed = evidence.stream().map(Evidence::getId).filter(Objects::nonNull).collect(Collectors.toSet());
         List<Evidence> pos = bySentiment(evidence, "pos");
         List<Evidence> neg = bySentiment(evidence, "neg");
@@ -52,6 +60,7 @@ public class ReportComposer {
         sections.add(section("sentiment", "情感结构", sentimentClaims(overview, pos, neg, bySentiment(evidence, "neu"), allowed)));
         sections.add(section("aspects", "方面痛点与卖点", aspectClaims(aspectOrder, byAspect, allowed)));
         sections.add(section("quotes", "原声摘录", quoteClaims(pos, neg, allowed)));
+        sections.add(section("compete", "竞品对照", competeClaims(project, evidence, countedReviews, allowed)));
         sections.add(section("advice", "改进建议", adviceClaims(aspectOrder, byAspect, pos, allowed)));
         return sections.stream().filter(s -> s.getClaims() != null && !s.getClaims().isEmpty()).toList();
     }
@@ -158,6 +167,85 @@ public class ReportComposer {
             add(claims, aspect + quoteOf(row), ids(List.of(row), allowed));
         }
         return claims;
+    }
+
+    private List<ReportView.Claim> competeClaims(
+            Project project,
+            List<Evidence> evidence,
+            List<Review> countedReviews,
+            Set<Long> allowed
+    ) {
+        List<String> rivals = readNames(project.getCompetitors());
+        Map<Long, Review> byReview = new HashMap<>();
+        if (countedReviews != null) {
+            for (Review row : countedReviews) {
+                if (row.getId() != null) {
+                    byReview.put(row.getId(), row);
+                }
+            }
+        }
+        String ownKey = StringUtils.hasText(project.getMainModel()) ? project.getMainModel() : project.getBrand();
+        List<Evidence> own = new ArrayList<>();
+        List<Evidence> rivalEv = new ArrayList<>();
+        for (Evidence row : evidence) {
+            Review review = byReview.get(row.getReviewId());
+            String product = review == null ? "" : String.valueOf(review.getProductName() == null ? "" : review.getProductName());
+            if (matchesAny(product, rivals)) {
+                rivalEv.add(row);
+            } else if (!StringUtils.hasText(ownKey) || containsIgnore(product, ownKey) || !StringUtils.hasText(product)) {
+                own.add(row);
+            }
+        }
+        List<ReportView.Claim> claims = new ArrayList<>();
+        if (rivals.isEmpty()) {
+            add(claims, "项目还没填写竞品。在项目里补上竞品名称，并导入带对应商品名的评论后，这里会对照声量和痛点。", ids(first(evidence, 3), allowed));
+            return claims;
+        }
+        if (rivalEv.isEmpty()) {
+            add(claims, "已填写竞品「" + String.join("、", rivals) + "」，但评论商品名里还没有对应条目。请导入竞品评论后再生成。", ids(first(own.isEmpty() ? evidence : own, 3), allowed));
+            return claims;
+        }
+        add(claims, "本型号相关原评 " + own.size() + " 条，竞品相关 " + rivalEv.size() + " 条（按商品名归类）。", ids(first(all(own, rivalEv), 3), allowed));
+        List<Evidence> ownNeg = bySentiment(own, "neg");
+        List<Evidence> rivalNeg = bySentiment(rivalEv, "neg");
+        if (!rivalNeg.isEmpty()) {
+            add(claims, "竞品负向更值得盯：「" + (StringUtils.hasText(rivalNeg.get(0).getAspectName()) ? rivalNeg.get(0).getAspectName() : "体验") + "」" + quoteOf(rivalNeg.get(0)) + "。", ids(first(rivalNeg, 3), allowed));
+        }
+        if (!ownNeg.isEmpty() && !rivalNeg.isEmpty()) {
+            add(claims, "本型号也有负向，改品时不要只看竞品槽点，两边原评都要核对。", ids(first(all(ownNeg, rivalNeg), 3), allowed));
+        } else if (!ownNeg.isEmpty()) {
+            add(claims, "竞品原评里负向较少，本型号仍有可改进点，建议对照原评改描述或参数。", ids(first(ownNeg, 3), allowed));
+        }
+        return claims;
+    }
+
+    private List<String> readNames(String json) {
+        if (!StringUtils.hasText(json)) {
+            return List.of();
+        }
+        try {
+            List<String> names = objectMapper.readValue(json, new TypeReference<>() {
+            });
+            return names == null ? List.of() : names.stream().map(String::trim).filter(StringUtils::hasText).toList();
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static boolean matchesAny(String product, List<String> names) {
+        for (String name : names) {
+            if (containsIgnore(product, name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsIgnore(String haystack, String needle) {
+        if (!StringUtils.hasText(haystack) || !StringUtils.hasText(needle)) {
+            return false;
+        }
+        return haystack.toLowerCase().contains(needle.toLowerCase());
     }
 
     private List<ReportView.Claim> adviceClaims(
