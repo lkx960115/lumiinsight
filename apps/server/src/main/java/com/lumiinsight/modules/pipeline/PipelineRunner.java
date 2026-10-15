@@ -135,6 +135,8 @@ public class PipelineRunner {
         }
     }
 
+    private static final int ANALYZE_BATCH = 50;
+
     private void executeAnalyze(PipelineJob job) {
         job.setStatus(JobStatus.ANALYZING.name());
         job.setMessage("正在分析情感与方面");
@@ -156,53 +158,42 @@ public class PipelineRunner {
                 row.put("content", review.getContent());
                 payload.add(row);
             }
+            List<Map<String, Object>> aspects = aspectPayload();
             List<Map<String, Object>> specs = llmRuntimeService.workerSpecs("absa");
-            log.info("分析送出评论 {} 条 jobId={} 可用模型 {}", payload.size(), job.getId(), specs.size());
-            Map<String, Object> result = null;
-            Map<String, Object> used = null;
-            Map<String, Object> fallback = null;
-            for (Map<String, Object> spec : specs) {
-                try {
-                    Map<String, Object> attempt = workerClient.analyze(
-                            job.getId(), job.getProjectId(), payload, aspectPayload(), spec
-                    );
-                    boolean ok = usedLlm(attempt);
-                    llmUsageService.record(
-                            job.getId(),
-                            job.getProjectId(),
-                            spec,
-                            attempt,
-                            ok,
-                            ok ? "ok" : "模型未返回有效结果"
-                    );
-                    if (ok) {
-                        result = attempt;
-                        used = spec;
-                        break;
-                    }
-                    if (attempt != null) {
-                        fallback = attempt;
-                    }
-                } catch (Exception e) {
-                    log.warn("模型调用失败，尝试下一个 jobId={} role={}", job.getId(), spec.get("role"), e);
-                    llmUsageService.record(job.getId(), job.getProjectId(), spec, null, false, "超时或调用失败");
+            int total = payload.size();
+            log.info("分析送出评论 {} 条 jobId={} 可用模型 {} 每批 {}", total, job.getId(), specs.size(), ANALYZE_BATCH);
+            int done = 0;
+            int aspectCount = 0;
+            boolean anyLlm = false;
+            boolean loggedMiss = false;
+            String modelExtra = "";
+            for (int from = 0; from < total; from += ANALYZE_BATCH) {
+                int to = Math.min(from + ANALYZE_BATCH, total);
+                job.setMessage("正在分析情感与方面（已完成 " + done + " / " + total + "）");
+                pipelineJobMapper.updateById(job);
+                Map<String, Object> result = analyzeChunk(job, payload.subList(from, to), aspects, specs, loggedMiss);
+                if (result != null && Boolean.TRUE.equals(result.get("_loggedMiss"))) {
+                    loggedMiss = true;
+                    result.remove("_loggedMiss");
                 }
+                if (usedLlm(result)) {
+                    anyLlm = true;
+                    if (modelExtra.isEmpty() && result.get("_modelExtra") != null) {
+                        modelExtra = String.valueOf(result.get("_modelExtra"));
+                    }
+                }
+                if (result != null) {
+                    result.remove("_modelExtra");
+                }
+                List<Long> reviewIds = applyAnalyzeResult(job.getProjectId(), result);
+                evidenceService.replaceForReviews(job.getProjectId(), reviewIds);
+                aspectCount += toInt(result == null ? null : result.get("aspectCount"));
+                done = to;
             }
-            if (result == null) {
-                result = fallback;
-            }
-            if (result == null) {
-                result = workerClient.analyze(job.getId(), job.getProjectId(), payload, aspectPayload(), null);
-            }
-            if (used != null && result != null) {
-                String label = String.valueOf(used.getOrDefault("providerName", "")) + " · " + used.getOrDefault("model", "");
-                String extra = "backup".equals(String.valueOf(used.get("role"))) ? "；已切备用 " + label : "；" + label;
-                Map<String, Object> copy = new HashMap<>(result);
-                copy.put("message", String.valueOf(result.getOrDefault("message", "分析完成")) + extra);
-                result = copy;
-            }
-            List<Long> reviewIds = applyAnalyzeResult(job.getProjectId(), result);
-            evidenceService.replaceForReviews(job.getProjectId(), reviewIds);
+            String how = anyLlm
+                    ? "模型 JSON"
+                    : (specs.isEmpty() ? "词典规则（未配置模型 Key）" : "词典规则（模型未返回有效结果）");
+            String analyzeMsg = "分析完成：" + done + " 条，方面 " + aspectCount + " 条（" + how + "）" + modelExtra;
             job.setStatus(JobStatus.INDEXING.name());
             job.setMessage("正在建立检索，随后可按方面查看原评");
             pipelineJobMapper.updateById(job);
@@ -212,8 +203,6 @@ public class PipelineRunner {
             pipelineJobMapper.updateById(job);
             String reportMsg = reportService.generateAfterAnalyze(job.getProjectId(), job.getCreatedBy());
             job.setStatus(JobStatus.READY.name());
-            Object msg = result == null ? null : result.get("message");
-            String analyzeMsg = msg == null ? "分析完成" : String.valueOf(msg);
             job.setMessage(analyzeMsg + "。" + indexMsg + "。" + reportMsg);
             pipelineJobMapper.updateById(job);
         } catch (Exception e) {
@@ -221,6 +210,83 @@ public class PipelineRunner {
             job.setStatus(JobStatus.FAILED.name());
             job.setMessage("分析失败: " + e.getMessage());
             pipelineJobMapper.updateById(job);
+        }
+    }
+
+    private Map<String, Object> analyzeChunk(
+            PipelineJob job,
+            List<Map<String, Object>> batch,
+            List<Map<String, Object>> aspects,
+            List<Map<String, Object>> specs,
+            boolean loggedMiss
+    ) {
+        Map<String, Object> result = null;
+        Map<String, Object> used = null;
+        Map<String, Object> fallback = null;
+        boolean missNow = loggedMiss;
+        for (Map<String, Object> spec : specs) {
+            try {
+                Map<String, Object> attempt = workerClient.analyze(
+                        job.getId(), job.getProjectId(), batch, aspects, spec
+                );
+                boolean ok = usedLlm(attempt);
+                if (ok || !missNow) {
+                    llmUsageService.record(
+                            job.getId(),
+                            job.getProjectId(),
+                            spec,
+                            attempt,
+                            ok,
+                            ok ? "ok" : "模型未返回有效结果"
+                    );
+                    if (!ok) {
+                        missNow = true;
+                    }
+                }
+                if (ok) {
+                    result = attempt;
+                    used = spec;
+                    break;
+                }
+                if (attempt != null) {
+                    fallback = attempt;
+                }
+            } catch (Exception e) {
+                log.warn("模型调用失败，尝试下一个 jobId={} role={}", job.getId(), spec.get("role"), e);
+                if (!missNow) {
+                    llmUsageService.record(job.getId(), job.getProjectId(), spec, null, false, "超时或调用失败");
+                    missNow = true;
+                }
+            }
+        }
+        if (result == null) {
+            result = fallback;
+        }
+        if (result == null) {
+            result = workerClient.analyze(job.getId(), job.getProjectId(), batch, aspects, null);
+        }
+        Map<String, Object> out = result == null ? new HashMap<>() : new HashMap<>(result);
+        if (!loggedMiss && missNow) {
+            out.put("_loggedMiss", Boolean.TRUE);
+        }
+        if (used != null) {
+            String label = String.valueOf(used.getOrDefault("providerName", "")) + " · " + used.getOrDefault("model", "");
+            out.put("_modelExtra", "backup".equals(String.valueOf(used.get("role"))) ? "；已切备用 " + label : "；" + label);
+        }
+        return out;
+    }
+
+    private static int toInt(Object raw) {
+        if (raw instanceof Number number) {
+            return number.intValue();
+        }
+        if (raw == null) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(String.valueOf(raw).trim());
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 

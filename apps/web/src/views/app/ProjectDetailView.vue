@@ -19,7 +19,7 @@
     <div v-if="runningJob" class="run-banner is-running">
       <div>
         <strong>正在处理</strong>
-        <p>{{ jobTypeLabel(runningJob.type) }}进行中（{{ jobStatusLabel(runningJob.status) }}）。可以离开此页，稍后再回来看结果。</p>
+        <p>{{ jobTypeLabel(runningJob.type) }}进行中（{{ jobStatusLabel(runningJob.status) }}）{{ runningNote ? '，' + runningNote : '' }}。可以离开此页，稍后再回来看结果。</p>
       </div>
     </div>
     <div v-else-if="latestFailed" class="run-banner is-failed">
@@ -234,6 +234,11 @@ const latestFailed = computed(() => {
 const latestFailedNote = computed(() => {
   const note = pipelineRemark(latestFailed.value?.message)
   return !note || note === '—' ? '请点重试，或先确认分析服务已启动。' : note
+})
+const runningNote = computed(() => {
+  const note = pipelineRemark(runningJob.value?.message)
+  if (note && /已完成/.test(note)) return note
+  return ''
 })
 const reviewEmptyText = computed(() => {
   if (reviewLoadError.value) return reviewLoadError.value
