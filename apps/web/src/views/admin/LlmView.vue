@@ -197,7 +197,7 @@ const PURPOSE: Record<string, { name: string; hint: string }> = {
   absa: { name: '方面情感', hint: '把评论拆成方面、正负向和原因' },
   sentiment: { name: '整句情感', hint: '整条评论的正负向' },
   report_summary: { name: '报告摘要', hint: '基于统计和原声写摘要，不能空编' },
-  embedding: { name: '向量检索', hint: '第三周按证据找回原评' },
+  embedding: { name: '向量检索', hint: '按意思找原评，须配 embedding 模型' },
   spam_classify: { name: '去水辅助', hint: '可选；清洗仍以规则为主' },
 }
 
