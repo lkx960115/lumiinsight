@@ -51,5 +51,8 @@ for i, (p, t) in enumerate(competitors, start=1):
         f"{p},{t},2026-04-{i + 1:02d} 10:00:00,SKU-C{i:02d},RC{i:03d},{i + 2},{f'anonC{i:02d}'},星辉竞品灯,https://example.com/r/c{i}"
     )
 
-(ROOT / "sample-reviews.csv").write_text("\n".join(rows) + "\n", encoding="utf-8")
+text = "\n".join(rows) + "\n"
+(ROOT / "sample-reviews.csv").write_text(text, encoding="utf-8-sig")
+compete_rows = [rows[0]] + [line for line in rows[1:] if "星辉竞品灯" in line]
+(ROOT / "sample-competitor-reviews.csv").write_text("\n".join(compete_rows) + "\n", encoding="utf-8-sig")
 print("wrote", ROOT / "sample-reviews.csv", "rows", len(rows) - 1)

@@ -38,7 +38,7 @@
 
     <el-card class="block">
       <template #header>导入评论（Excel / CSV）</template>
-      <p class="muted">模板列：平台、原文（必填），时间、商品ID、评论ID、点赞、作者匿名ID、商品名、链接。导入成功后可点「清洗并分析」。</p>
+      <p class="muted">模板列：平台、原文（必填），时间、商品ID、评论ID、点赞、作者匿名ID、商品名、链接。用 Excel 打开请重新下载样例，不要把乱码文件再导入。导入成功后可点「清洗并分析」。</p>
       <div class="toolbar">
         <el-button text tag="a" href="/sample-reviews.csv" download>下载样例</el-button>
         <el-upload :show-file-list="false" :http-request="upload" accept=".xlsx,.xls,.csv">

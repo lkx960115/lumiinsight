@@ -45,7 +45,7 @@
 
     <el-card v-for="section in sections" :key="section.code" class="block">
       <template #header>{{ section.title }}</template>
-      <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。表里是两边声量和痛点；下面每句都能查看原评。对不上时先补竞品，再导入带对应商品名的评论。</p>
+      <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。每个竞品单独一行，没有对应原评的不进表。下面每句都能查看原评。</p>
       <el-table v-if="section.compare && section.compare.length" :data="section.compare" class="mt" empty-text="还没有对照数据。">
         <el-table-column label="对象" min-width="140">
           <template #default="{ row }">{{ row.name }}</template>
@@ -119,11 +119,11 @@ const busy = ref(false)
 const exportVisible = ref(false)
 const drawer = ref(false)
 const currentList = ref<any[]>([])
-const sections = computed(() => (report.value?.sections || []).map((section: { code?: string; title?: string; claims?: { text?: string; evidenceIds?: number[] }[]; compare?: { name?: string; volume?: number; pos?: number; neg?: number; neu?: number; topPain?: string }[] }) => ({)
+const sections = computed(() => (report.value?.sections || []).map((section: any) => ({
   ...section,
   followUp: competeFollowUp(section),
 })))
-const hasCompete = computed(() => sections.value.some((section: { code?: string }) => section.code === 'compete'))
+const hasCompete = computed(() => sections.value.some((section: any) => section.code === 'compete'))
 
 function competeFollowUp(section: { code?: string; claims?: { text?: string }[] }) {
   if (section.code !== 'compete') return ''

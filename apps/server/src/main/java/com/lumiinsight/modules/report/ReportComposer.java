@@ -263,48 +263,80 @@ public class ReportComposer {
         List<String> rivals = readNames(project.getCompetitors());
         String ownKey = StringUtils.hasText(project.getMainModel()) ? project.getMainModel() : project.getBrand();
         List<Evidence> own = new ArrayList<>();
-        List<Evidence> rivalEv = new ArrayList<>();
+        Map<String, List<Evidence>> byRival = new LinkedHashMap<>();
+        for (String rival : rivals) {
+            byRival.put(rival, new ArrayList<>());
+        }
         for (Evidence row : evidence) {
             Review review = byReview.get(row.getReviewId());
             String product = review == null ? "" : String.valueOf(review.getProductName() == null ? "" : review.getProductName());
-            if (matchesAny(product, rivals)) {
-                rivalEv.add(row);
+            String matched = firstMatch(product, rivals);
+            if (matched != null) {
+                byRival.get(matched).add(row);
             } else if (!StringUtils.hasText(ownKey) || containsIgnore(product, ownKey) || !StringUtils.hasText(product)) {
                 own.add(row);
             }
         }
+        List<String> present = rivals.stream().filter(name -> !byRival.get(name).isEmpty()).toList();
+        List<String> missing = rivals.stream().filter(name -> byRival.get(name).isEmpty()).toList();
         List<ReportView.Claim> claims = new ArrayList<>();
         if (rivals.isEmpty()) {
             add(claims, "项目还没填写竞品。在项目里补上竞品名称，并导入带对应商品名的评论后，这里会对照声量和痛点。", ids(first(evidence, 3), allowed));
             return section("compete", "竞品对照", claims);
         }
-        if (rivalEv.isEmpty()) {
+        if (present.isEmpty()) {
             add(claims, "已填写竞品「" + String.join("、", rivals) + "」，但评论商品名里还没有对应条目。请导入竞品评论后再生成。", ids(first(own.isEmpty() ? evidence : own, 3), allowed));
             return section("compete", "竞品对照", claims);
         }
         String ownName = StringUtils.hasText(ownKey) ? ownKey : "本型号";
-        String rivalName = String.join("、", rivals);
         Counts ownCounts = countsOf(own, byReview);
-        Counts rivalCounts = countsOf(rivalEv, byReview);
-        List<ReportView.CompareRow> compare = List.of(
-                compareRow(ownName, ownCounts, own),
-                compareRow(rivalName, rivalCounts, rivalEv)
-        );
+        List<ReportView.CompareRow> compare = new ArrayList<>();
+        if (ownCounts.volume > 0) {
+            compare.add(compareRow(ownName, ownCounts, own));
+        }
+        for (String rival : present) {
+            List<Evidence> rows = byRival.get(rival);
+            compare.add(compareRow(rival, countsOf(rows, byReview), rows));
+        }
         add(claims, ownName + " 原评 " + ownCounts.volume + " 条（正向 " + ownCounts.pos + "、负向 " + ownCounts.neg
-                        + "），" + rivalName + " " + rivalCounts.volume + " 条（正向 " + rivalCounts.pos + "、负向 " + rivalCounts.neg + "）。",
-                ids(first(all(own, rivalEv), 3), allowed));
-        String ownPain = topPainName(own);
-        if (ownPain != null) {
-            List<Evidence> rows = bySentiment(byAspect(own, ownPain), "neg");
-            add(claims, ownName + " 最集中痛点「" + ownPain + "」：「" + quoteOf(rows.get(0)) + "」。", ids(first(rows, 3), allowed));
+                        + "），已对照 " + present.size() + " 个竞品：" + String.join("、", present) + "。",
+                ids(first(all(own, byRival.get(present.get(0))), 3), allowed));
+        addPainClaim(claims, ownName, own, allowed);
+        int shown = 0;
+        for (String rival : present) {
+            if (shown >= 4) {
+                break;
+            }
+            List<Evidence> rows = byRival.get(rival);
+            Counts counts = countsOf(rows, byReview);
+            String pain = topPainName(rows);
+            if (pain != null) {
+                List<Evidence> neg = bySentiment(byAspect(rows, pain), "neg");
+                add(claims, "「" + rival + "」原评 " + counts.volume + " 条（正向 " + counts.pos + "、负向 " + counts.neg
+                                + "），最集中痛点「" + pain + "」：「" + quoteOf(neg.get(0)) + "」。",
+                        ids(first(neg, 3), allowed));
+            } else {
+                add(claims, "「" + rival + "」原评 " + counts.volume + " 条（正向 " + counts.pos + "、负向 " + counts.neg
+                                + "），负向很少，对照时不要只看声量。",
+                        ids(first(rows, 3), allowed));
+            }
+            addCompeteGaps(claims, ownName, rival, own, rows, allowed);
+            shown++;
         }
-        String rivalPain = topPainName(rivalEv);
-        if (rivalPain != null) {
-            List<Evidence> rows = bySentiment(byAspect(rivalEv, rivalPain), "neg");
-            add(claims, rivalName + " 最集中痛点「" + rivalPain + "」：「" + quoteOf(rows.get(0)) + "」。", ids(first(rows, 3), allowed));
+        if (!missing.isEmpty()) {
+            add(claims, "已填写竞品「" + String.join("、", missing) + "」，但评论商品名里还没有对应条目。请导入竞品评论后再生成。",
+                    ids(first(own.isEmpty() ? evidence : own, 3), allowed));
         }
-        addCompeteGaps(claims, ownName, rivalName, own, rivalEv, allowed);
         return section("compete", "竞品对照", claims, compare);
+    }
+
+    private static void addPainClaim(List<ReportView.Claim> claims, String name, List<Evidence> rows, Set<Long> allowed) {
+        String pain = topPainName(rows);
+        if (pain == null) {
+            return;
+        }
+        List<Evidence> neg = bySentiment(byAspect(rows, pain), "neg");
+        add(claims, name + " 最集中痛点「" + pain + "」：「" + quoteOf(neg.get(0)) + "」。", ids(first(neg, 3), allowed));
     }
 
     private void addCompeteGaps(
@@ -362,13 +394,13 @@ public class ReportComposer {
         }
     }
 
-    private static boolean matchesAny(String product, List<String> names) {
+    private static String firstMatch(String product, List<String> names) {
         for (String name : names) {
             if (containsIgnore(product, name)) {
-                return true;
+                return name;
             }
         }
-        return false;
+        return null;
     }
 
     private static boolean containsIgnore(String haystack, String needle) {

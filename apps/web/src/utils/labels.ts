@@ -96,8 +96,10 @@ export function auditDetailLabel(action?: string | null, detail?: string | null)
 export function formatClock(value?: string | null) {
   if (!value) return '—'
   const raw = String(value).trim()
-  const iso = raw.includes('T') ? raw : raw.replace(' ', 'T')
-  const dated = /[zZ]|[+-]\d{2}:\d{2}$/.test(raw) ? new Date(raw) : new Date(`${iso}Z`)
+  if (!/[zZ]|[+-]\d{2}:\d{2}$/.test(raw)) {
+    return formatDateTime(raw)
+  }
+  const dated = new Date(raw)
   if (Number.isNaN(dated.getTime())) return formatDateTime(value)
   return new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Asia/Shanghai',
