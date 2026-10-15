@@ -43,13 +43,24 @@
       </div>
     </el-card>
 
-    <el-card v-for="section in report.sections || []" :key="section.code" class="block">
+    <el-card v-for="section in sections" :key="section.code" class="block">
       <template #header>{{ section.title }}</template>
+      <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。对不上时先补竞品，再导入带对应商品名的评论。</p>
       <div v-for="(claim, idx) in section.claims || []" :key="idx" class="report-claim">
         <p>{{ claim.text }}</p>
         <div class="row-actions">
           <el-button v-if="(claim.evidenceIds || []).length" text @click="openClaim(claim)">查看原评</el-button>
         </div>
+      </div>
+      <div v-if="section.followUp" class="row-actions">
+        <el-button text @click="router.push(`/app/projects/${report.projectId}`)">{{ section.followUp }}</el-button>
+      </div>
+    </el-card>
+    <el-card v-if="!hasCompete" class="block">
+      <template #header>竞品对照</template>
+      <p class="muted">这份报告还没有竞品对照。在项目里填写竞品，并导入带对应商品名的评论后，再点「生成报告」。</p>
+      <div class="row-actions">
+        <el-button text @click="router.push(`/app/projects/${report.projectId}`)">去项目</el-button>
       </div>
     </el-card>
 
@@ -75,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '@/api/http'
@@ -88,6 +99,19 @@ const busy = ref(false)
 const exportVisible = ref(false)
 const drawer = ref(false)
 const currentList = ref<any[]>([])
+const sections = computed(() => (report.value?.sections || []).map((section: { code?: string; title?: string; claims?: { text?: string; evidenceIds?: number[] }[] }) => ({
+  ...section,
+  followUp: competeFollowUp(section),
+})))
+const hasCompete = computed(() => sections.value.some((section: { code?: string }) => section.code === 'compete'))
+
+function competeFollowUp(section: { code?: string; claims?: { text?: string }[] }) {
+  if (section.code !== 'compete') return ''
+  const text = (section.claims || []).map((claim) => claim.text || '').join(' ')
+  if (text.includes('还没填写竞品')) return '去项目填写竞品'
+  if (text.includes('还没有对应条目')) return '去项目导入竞品评论'
+  return ''
+}
 
 async function load() {
   const { data } = await http.get(`/reports/${route.params.id}`)

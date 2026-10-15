@@ -31,7 +31,7 @@
 
     <el-card class="block">
       <template #header>评论概览</template>
-      <p class="muted">按有效评论统计，重复/广告/过短不计入图表。点方面条可查看对应原评。</p>
+      <p class="muted">按有效评论统计，重复/广告/过短不计入图表。点方面条可看对应原评；有评论时间时会显示按月走势。</p>
       <OverviewCharts :overview="overview" @select-aspect="onSelectAspect" />
     </el-card>
 
@@ -122,11 +122,21 @@
           <el-option label="淘宝" value="taobao" />
           <el-option label="抖音" value="douyin" />
         </el-select>
-        <el-input v-model="keyword" clearable placeholder="搜索原文" style="width: 240px" @keyup.enter="searchReviews" />
+        <el-select v-model="searchMode" style="width: 120px" @change="searchReviews">
+          <el-option label="搜原文" value="text" />
+          <el-option label="按意思找" value="meaning" />
+        </el-select>
+        <el-input
+          v-model="keyword"
+          clearable
+          :placeholder="searchMode === 'meaning' ? '例如安装麻烦、色温偏冷' : '搜索原文'"
+          style="width: 240px"
+          @keyup.enter="searchReviews"
+        />
         <el-button @click="searchReviews">查询</el-button>
         <el-button text @click="resetReviews">重置</el-button>
       </div>
-      <el-table :data="reviews.records" :empty-text="reviewEmptyText">
+      <el-table :data="reviews.records" v-loading="reviewsLoading" :empty-text="reviewEmptyText">
         <el-table-column type="expand">
           <template #default="{ row }">
             <div v-if="row.aspects?.length" class="aspect-detail">
@@ -167,6 +177,7 @@
         </el-table-column>
       </el-table>
       <el-pagination
+        v-if="searchMode !== 'meaning'"
         class="pager"
         background
         hide-on-single-page
@@ -200,7 +211,10 @@ const reviews = reactive({ records: [] as any[], total: 0 })
 const platform = ref('')
 const aspect = ref('')
 const keyword = ref('')
+const searchMode = ref<'text' | 'meaning'>('text')
 const reviewPage = ref(1)
+const reviewsLoading = ref(false)
+const reviewLoadError = ref('')
 const busy = ref(false)
 const latestReport = ref<any>(null)
 const latestFailed = computed(() => {
@@ -212,6 +226,11 @@ const latestFailedNote = computed(() => {
   return !note || note === '—' ? '请点重试，或先确认分析服务已启动。' : note
 })
 const reviewEmptyText = computed(() => {
+  if (reviewLoadError.value) return reviewLoadError.value
+  if (searchMode.value === 'meaning') {
+    if (!keyword.value.trim()) return '请输入要找的意思，例如安装麻烦、色温偏冷。'
+    return '没有相近的原评。试试换个说法，或改回搜原文。'
+  }
   if (aspect.value) return '这个方面还没有原评。点图表换一个方面，或重置筛选。'
   if (platform.value || keyword.value) return '没有符合条件的评论。试试重置筛选。'
   return '还没有评论。请先导入文件，再点清洗并分析。'
@@ -226,6 +245,8 @@ function resetReviews() {
   platform.value = ''
   keyword.value = ''
   aspect.value = ''
+  searchMode.value = 'text'
+  reviewLoadError.value = ''
   searchReviews()
 }
 
@@ -269,17 +290,53 @@ async function loadPipeline() {
 }
 
 async function loadReviews() {
-  const { data } = await http.get(`/projects/${id}/reviews`, {
-    params: {
-      page: reviewPage.value,
-      size: 10,
-      platform: platform.value || undefined,
-      keyword: keyword.value || undefined,
-      aspect: aspect.value || undefined,
-    },
-  })
-  reviews.records = data.data.records
-  reviews.total = Number(data.data.total)
+  reviewsLoading.value = true
+  reviewLoadError.value = ''
+  try {
+    if (searchMode.value === 'meaning') {
+      const q = keyword.value.trim()
+      if (!q) {
+        reviews.records = []
+        reviews.total = 0
+        return
+      }
+      const { data } = await http.get(`/projects/${id}/reviews/semantic`, {
+        params: {
+          q,
+          platform: platform.value || undefined,
+          aspect: aspect.value || undefined,
+        },
+      })
+      reviews.records = data.data.records || []
+      reviews.total = Number(data.data.total || 0)
+      return
+    }
+    const { data } = await http.get(`/projects/${id}/reviews`, {
+      params: {
+        page: reviewPage.value,
+        size: 10,
+        platform: platform.value || undefined,
+        keyword: keyword.value || undefined,
+        aspect: aspect.value || undefined,
+      },
+    })
+    reviews.records = data.data.records
+    reviews.total = Number(data.data.total)
+  } catch (err) {
+    reviews.records = []
+    reviews.total = 0
+    reviewLoadError.value = apiErrorMessage(err) || (searchMode.value === 'meaning'
+      ? '按意思查找失败。请确认已配置向量检索模型，并完成清洗并分析。'
+      : '没有符合条件的评论。试试重置筛选。')
+  } finally {
+    reviewsLoading.value = false
+  }
+}
+
+function apiErrorMessage(err: unknown) {
+  if (!err || typeof err !== 'object') return ''
+  const row = err as { message?: string; response?: { data?: { message?: string } } }
+  return friendlyMessage(row.response?.data?.message || row.message)
 }
 
 async function upload(opt: UploadRequestOptions) {

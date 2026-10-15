@@ -60,7 +60,7 @@
         <el-form-item label="品类"><el-input v-model="form.category" /></el-form-item>
         <el-form-item label="品牌"><el-input v-model="form.brand" /></el-form-item>
         <el-form-item label="主型号"><el-input v-model="form.mainModel" /></el-form-item>
-        <el-form-item label="竞品"><el-input v-model="competitorsText" placeholder="逗号分隔" /></el-form-item>
+        <el-form-item label="竞品"><el-input v-model="competitorsText" placeholder="逗号分隔，需与评论商品名对应" /></el-form-item>
         <el-form-item label="关键词"><el-input v-model="keywordsText" placeholder="逗号分隔" /></el-form-item>
         <el-form-item label="平台">
           <el-checkbox-group v-model="form.platforms">
@@ -82,7 +82,8 @@
         <li>新建项目，填品牌和主型号。</li>
         <li>进入项目，下载样例或用自己的 Excel/CSV 导入。</li>
         <li>点「清洗并分析」，等一两分钟，不要关页面。</li>
-        <li>看图表和原评；侧栏「报告」打开结论，点「查看原评」核对原文。</li>
+        <li>看图表、按月走势和原评。评论列表可改成「按意思找」。</li>
+        <li>侧栏「报告」打开结论，点「查看原评」核对原文。要对照竞品时，先在项目里填竞品并导入对应评论，再生成报告。</li>
         <li>需要带走时，在报告页导出表格或文稿。</li>
       </ol>
       <p class="muted">分析服务未启动、或还没配模型 Key 时，会提示失败或按词典降级，不要当成系统坏了。</p>

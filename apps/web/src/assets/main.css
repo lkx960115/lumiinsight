@@ -499,6 +499,10 @@ h2 {
   height: 280px;
 }
 
+.overview-trend {
+  margin-top: 20px;
+}
+
 .job-failed {
   color: #b4533a;
   font-weight: 500;

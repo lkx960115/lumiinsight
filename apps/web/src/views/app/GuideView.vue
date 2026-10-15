@@ -30,12 +30,12 @@
 
     <el-card class="block">
       <template #header>5. 看图表和原评</template>
-      <p class="muted">概览里看情感和方面。点方面条会筛出对应原评。展开评论行可看方面、情感和原因。</p>
+      <p class="muted">概览里看情感、方面和按月走势。点方面条会筛出对应原评。评论列表可改成「按意思找」。展开评论行可看方面、情感和原因。</p>
     </el-card>
 
     <el-card class="block">
       <template #header>6. 打开报告并导出</template>
-      <p class="muted">分析完成后点「打开报告」，或走侧栏「报告」。每条结论点「查看原评」。再点「导出」下载表格或文稿，文末有引用编号。</p>
+      <p class="muted">分析完成后点「打开报告」，或走侧栏「报告」。每条结论点「查看原评」。要对照竞品时，先在项目里填竞品并导入对应商品名的评论，再生成报告。需要带走时导出表格或文稿，文末有引用编号。</p>
       <el-button @click="router.push('/app/reports')">去报告列表</el-button>
     </el-card>
 

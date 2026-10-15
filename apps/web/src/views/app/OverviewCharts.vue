@@ -26,6 +26,11 @@
         <div v-show="hasAspects" ref="barEl" class="overview-chart" />
       </div>
     </div>
+    <div v-if="hasSentiment" class="overview-trend">
+      <h3>按月情感</h3>
+      <p v-if="!hasMonths" class="muted">评论没有时间，无法按月看走势。</p>
+      <div v-show="hasMonths" ref="trendEl" class="overview-chart" />
+    </div>
     <p v-if="error" class="muted">{{ error }}</p>
   </div>
 </template>
@@ -34,6 +39,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 type AspectItem = { name: string; total: number; pos: number; neg: number; neu: number }
+type MonthItem = { label: string; pos: number; neg: number; neu: number }
 type Overview = {
   imported: number
   counted: number
@@ -42,6 +48,7 @@ type Overview = {
   neg: number
   neu: number
   aspects?: AspectItem[]
+  months?: MonthItem[]
 }
 
 const props = defineProps<{ overview: Overview | null }>()
@@ -49,9 +56,11 @@ const emit = defineEmits<{ 'select-aspect': [name: string] }>()
 
 const pieEl = ref<HTMLElement | null>(null)
 const barEl = ref<HTMLElement | null>(null)
+const trendEl = ref<HTMLElement | null>(null)
 const error = ref('')
 let pieChart: EChartsLike | null = null
 let barChart: EChartsLike | null = null
+let trendChart: EChartsLike | null = null
 
 const COLORS = { pos: '#1f6a56', neg: '#b4533a', neu: '#8a9a94' }
 
@@ -60,6 +69,8 @@ const hasSentiment = computed(() => {
   return Boolean(o && o.pos + o.neg + o.neu > 0)
 })
 const hasAspects = computed(() => (props.overview?.aspects || []).some((item) => item.total > 0))
+const months = computed(() => (props.overview?.months || []).filter((item) => item.pos + item.neg + item.neu > 0))
+const hasMonths = computed(() => months.value.length > 0)
 
 type EChartsLike = {
   setOption: (opt: unknown, notMerge?: boolean) => void
@@ -124,8 +135,10 @@ function render() {
   if (!api || !overview || !hasSentiment.value) {
     pieChart?.dispose()
     barChart?.dispose()
+    trendChart?.dispose()
     pieChart = null
     barChart = null
+    trendChart = null
     return
   }
   if (pieEl.value) {
@@ -172,6 +185,31 @@ function render() {
     barChart.dispose()
     barChart = null
   }
+  if (trendEl.value && hasMonths.value) {
+    trendChart = trendChart || api.init(trendEl.value)
+    const labels = months.value.map((item) => monthLabel(item.label))
+    trendChart.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: { bottom: 0 },
+      grid: { left: 48, right: 16, top: 8, bottom: 36 },
+      xAxis: { type: 'category', data: labels, axisTick: { show: false } },
+      yAxis: { type: 'value', minInterval: 1 },
+      series: [
+        { name: '正向', type: 'bar', stack: 'month', barWidth: 18, data: months.value.map((item) => item.pos), itemStyle: { color: COLORS.pos } },
+        { name: '负向', type: 'bar', stack: 'month', data: months.value.map((item) => item.neg), itemStyle: { color: COLORS.neg } },
+        { name: '中性', type: 'bar', stack: 'month', data: months.value.map((item) => item.neu), itemStyle: { color: COLORS.neu } },
+      ],
+    }, true)
+  } else if (trendChart) {
+    trendChart.dispose()
+    trendChart = null
+  }
+}
+
+function monthLabel(raw: string) {
+  const match = String(raw || '').match(/^(\d{4})-(\d{2})$/)
+  if (!match) return raw
+  return `${match[1]}年${Number(match[2])}月`
 }
 
 async function refresh() {
@@ -188,6 +226,7 @@ async function refresh() {
 function onResize() {
   pieChart?.resize()
   barChart?.resize()
+  trendChart?.resize()
 }
 
 watch(() => props.overview, () => refresh(), { deep: true })
@@ -199,5 +238,6 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   pieChart?.dispose()
   barChart?.dispose()
+  trendChart?.dispose()
 })
 </script>
