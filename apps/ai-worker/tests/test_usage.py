@@ -1,6 +1,6 @@
 import unittest
 
-from app.llm import add_usage, extract_usage
+from app.llm import add_usage, extract_usage, request_timeout
 
 
 class UsageParseTest(unittest.TestCase):
@@ -10,6 +10,11 @@ class UsageParseTest(unittest.TestCase):
 
     def test_missing_usage_is_zero(self):
         self.assertEqual({"promptTokens": 0, "completionTokens": 0, "totalTokens": 0}, extract_usage({}))
+
+    def test_request_timeout_uses_provider_and_caps(self):
+        self.assertEqual(60, request_timeout({"timeoutMs": 60000}, floor=20, cap=90))
+        self.assertEqual(90, request_timeout({"timeoutMs": 180000}, floor=20, cap=90))
+        self.assertEqual(20, request_timeout({"timeoutMs": 1000}, floor=20, cap=90))
 
     def test_add_usage(self):
         total = add_usage(

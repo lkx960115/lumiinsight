@@ -160,6 +160,7 @@ public class PipelineRunner {
             log.info("分析送出评论 {} 条 jobId={} 可用模型 {}", payload.size(), job.getId(), specs.size());
             Map<String, Object> result = null;
             Map<String, Object> used = null;
+            Map<String, Object> fallback = null;
             for (Map<String, Object> spec : specs) {
                 try {
                     Map<String, Object> attempt = workerClient.analyze(
@@ -179,10 +180,16 @@ public class PipelineRunner {
                         used = spec;
                         break;
                     }
+                    if (attempt != null) {
+                        fallback = attempt;
+                    }
                 } catch (Exception e) {
                     log.warn("模型调用失败，尝试下一个 jobId={} role={}", job.getId(), spec.get("role"), e);
                     llmUsageService.record(job.getId(), job.getProjectId(), spec, null, false, "超时或调用失败");
                 }
+            }
+            if (result == null) {
+                result = fallback;
             }
             if (result == null) {
                 result = workerClient.analyze(job.getId(), job.getProjectId(), payload, aspectPayload(), null);

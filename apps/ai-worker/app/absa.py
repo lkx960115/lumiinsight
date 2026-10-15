@@ -260,12 +260,17 @@ def _analyze_with_llm(reviews: list[dict[str, Any]], names: list[str], spec: dic
     usage = {"promptTokens": 0, "completionTokens": 0, "totalTokens": 0}
     batch_size = 5
     unique = unique_reviews(reviews)
+    misses = 0
     for i in range(0, len(unique), batch_size):
         batch = unique[i : i + batch_size]
         try:
             data, batch_usage = chat_json(spec, _llm_prompt(batch, names))
             usage = add_usage(usage, batch_usage)
+            misses = 0
         except Exception:
+            misses += 1
+            if misses >= 2:
+                break
             continue
         items = data.get("items") if isinstance(data.get("items"), list) else []
         for item in items:

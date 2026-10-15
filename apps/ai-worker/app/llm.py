@@ -8,6 +8,14 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
+def request_timeout(spec: dict[str, Any], *, default_ms: int = 60000, floor: int = 20, cap: int = 90) -> float:
+    try:
+        timeout_ms = int(spec.get("timeoutMs") or default_ms)
+    except (TypeError, ValueError):
+        timeout_ms = default_ms
+    return min(cap, max(floor, timeout_ms / 1000.0))
+
+
 def extract_usage(raw: dict[str, Any] | None) -> dict[str, int]:
     usage = (raw or {}).get("usage") or {}
     prompt = int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0)
@@ -30,8 +38,7 @@ def chat_json(spec: dict[str, Any], user_content: str) -> tuple[dict[str, Any], 
     api_key = str(spec.get("apiKey") or "").strip()
     if not base or not model or not api_key:
         raise RuntimeError("模型配置不完整")
-    timeout_ms = spec.get("timeoutMs") or 60000
-    timeout = min(20, max(5, int(timeout_ms) / 1000))
+    timeout = request_timeout(spec, default_ms=60000, floor=20, cap=90)
     messages = [
         {
             "role": "system",
@@ -130,8 +137,7 @@ def embed_texts(spec: dict[str, Any], texts: list[str]) -> tuple[list[list[float
     api_key = str(spec.get("apiKey") or "").strip()
     if not base or not model or not api_key:
         raise RuntimeError("模型配置不完整")
-    timeout_ms = spec.get("timeoutMs") or 60000
-    timeout = min(30, max(5, int(timeout_ms) / 1000))
+    timeout = request_timeout(spec, default_ms=60000, floor=15, cap=60)
     payload = {"model": model, "input": texts}
     raw = _post(base + "/embeddings", api_key, payload, timeout, spec.get("extraHeaders"))
     rows = raw.get("data") or []

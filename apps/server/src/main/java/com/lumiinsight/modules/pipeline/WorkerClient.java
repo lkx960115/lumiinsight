@@ -21,7 +21,7 @@ public class WorkerClient {
 
     public WorkerClient(@Value("${lumiinsight.worker.base-url}") String baseUrl) {
         this.restClient = build(baseUrl, 60);
-        this.analyzeClient = build(baseUrl, 90);
+        this.analyzeClient = build(baseUrl, 300);
     }
 
     private static RestClient build(String baseUrl, int readSeconds) {
