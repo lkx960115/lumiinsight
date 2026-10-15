@@ -8,11 +8,14 @@ from typing import Any
 from app.clean import match_aspects
 from app.llm import add_usage, chat_json
 
-CLAUSE_RE = re.compile(r"[，。；;,.!?！？]")
+CLAUSE_RE = re.compile(r"[，。；;,.!?！？]|不过|但是|但")
 
 POS_WORDS = (
     "够用",
     "舒服",
+    "刚好",
+    "正好",
+    "便宜",
     "简约",
     "挺搭",
     "清楚",
@@ -32,16 +35,31 @@ POS_WORDS = (
 NEG_WORDS = (
     "偏冷",
     "偏暖",
+    "偏黄",
+    "更冷",
     "太暗",
     "太亮",
+    "刺眼",
+    "闷",
     "慢",
     "贵",
     "略贵",
     "失灵",
     "掉线",
     "闪烁",
+    "频闪明显",
+    "明显频闪",
     "差",
     "坏",
+    "麻烦",
+    "看不懂",
+    "对不上",
+    "推诿",
+    "简陋",
+    "划痕",
+    "花哨",
+    "不太搭",
+    "难配对",
     "希望有",
     "偶发",
     "不满",

@@ -1,24 +1,12 @@
+import json
 import unittest
+from pathlib import Path
 
 from app.absa import analyze_reviews, constrain_name, normalize_item
 
-
-ASPECTS = [
-    {"name": "亮度", "keywords": "亮度,够亮,太暗,暗了,灯光亮"},
-    {"name": "色温", "keywords": "色温,暖光,冷光,偏冷,偏暖"},
-    {"name": "外观", "keywords": "外观,简约,好看,颜值,造型"},
-    {"name": "材质", "keywords": "材质,做工,用料"},
-    {"name": "安装", "keywords": "安装,安装说明,自己搞定"},
-    {"name": "质量", "keywords": "质量,扎实,做工扎实"},
-    {"name": "售后", "keywords": "售后,客服,回复及时"},
-    {"name": "价格", "keywords": "价格,贵,便宜,性价比"},
-    {"name": "物流", "keywords": "物流,快递,发货慢"},
-    {"name": "频闪", "keywords": "频闪,护眼,闪烁"},
-    {"name": "遥控", "keywords": "遥控,遥控器,失灵"},
-    {"name": "智能联动", "keywords": "智能联动,掉线,智能"},
-    {"name": "包装", "keywords": "包装,包装完好"},
-    {"name": "其它", "keywords": ""},
-]
+ASPECTS = json.loads(
+    (Path(__file__).resolve().parents[3] / "eval/fixtures/aspect-keywords.json").read_text(encoding="utf-8")
+)
 
 
 def by_name(item):
