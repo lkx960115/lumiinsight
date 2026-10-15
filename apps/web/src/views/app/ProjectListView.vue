@@ -81,7 +81,7 @@
       <ol class="guide-steps">
         <li>新建项目，填品牌和主型号。</li>
         <li>进入项目，下载样例或用自己的 Excel/CSV 导入。</li>
-        <li>点「清洗并分析」，等一两分钟，不要关页面。</li>
+        <li>点「清洗并分析」。可以离开页面，稍后再回来看结果。</li>
         <li>看图表、按月走势和原评。评论列表可改成「按意思找」。</li>
         <li>侧栏「报告」打开结论，点「查看原评」核对原文。要对照竞品时，先在项目里填竞品并导入对应评论，再生成报告。</li>
         <li>需要带走时，在报告页导出表格或文稿。</li>
@@ -173,7 +173,7 @@ async function save() {
 }
 
 async function onDelete(row: any) {
-  await ElMessageBox.confirm(`删除项目「${row.name}」？评论会随逻辑删除策略处理。`, '高风险操作', { type: 'warning' })
+  await ElMessageBox.confirm(`删除项目「${row.name}」后，评论、报告和检索数据会一并清除，且无法恢复。`, '删除项目', { type: 'warning' })
   await http.delete(`/projects/${row.id}`)
   ElMessage.success('已删除')
   await load()

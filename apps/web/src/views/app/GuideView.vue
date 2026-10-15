@@ -25,7 +25,7 @@
 
     <el-card class="block">
       <template #header>4. 清洗并分析</template>
-      <p class="muted">点右上角「清洗并分析」，等状态变成完成。通常要一两分钟，请不要关掉页面。失败了在分析记录里点「重试」。若提示连不上分析服务，先在本机启动 Worker。</p>
+      <p class="muted">点右上角「清洗并分析」。可以离开页面，稍后再回来看结果。失败了在分析记录里点「重试」。若提示连不上分析服务，先在本机启动分析进程。</p>
     </el-card>
 
     <el-card class="block">

@@ -7,17 +7,34 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumiinsight.common.exception.BizException;
 import com.lumiinsight.common.security.AuthUser;
 import com.lumiinsight.common.security.SecurityUtils;
+import com.lumiinsight.infra.minio.ObjectStorage;
 import com.lumiinsight.modules.audit.AuditService;
+import com.lumiinsight.modules.evidence.QdrantClient;
+import com.lumiinsight.modules.evidence.entity.Evidence;
+import com.lumiinsight.modules.evidence.mapper.EvidenceMapper;
+import com.lumiinsight.modules.importdata.entity.ImportJob;
+import com.lumiinsight.modules.importdata.mapper.ImportJobMapper;
+import com.lumiinsight.modules.llm.entity.LlmUsage;
+import com.lumiinsight.modules.llm.mapper.LlmUsageMapper;
+import com.lumiinsight.modules.pipeline.JobStatus;
+import com.lumiinsight.modules.pipeline.entity.PipelineJob;
+import com.lumiinsight.modules.pipeline.mapper.PipelineJobMapper;
 import com.lumiinsight.modules.project.dto.ProjectSaveRequest;
 import com.lumiinsight.modules.project.dto.ProjectView;
 import com.lumiinsight.modules.project.entity.Project;
 import com.lumiinsight.modules.project.entity.ProjectMember;
 import com.lumiinsight.modules.project.mapper.ProjectMapper;
 import com.lumiinsight.modules.project.mapper.ProjectMemberMapper;
+import com.lumiinsight.modules.report.entity.Report;
+import com.lumiinsight.modules.report.mapper.ReportMapper;
 import com.lumiinsight.modules.review.entity.Review;
+import com.lumiinsight.modules.review.entity.ReviewAspect;
+import com.lumiinsight.modules.review.mapper.ReviewAspectMapper;
 import com.lumiinsight.modules.review.mapper.ReviewMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +45,14 @@ public class ProjectService {
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper memberMapper;
     private final ReviewMapper reviewMapper;
+    private final ReviewAspectMapper reviewAspectMapper;
+    private final EvidenceMapper evidenceMapper;
+    private final ReportMapper reportMapper;
+    private final PipelineJobMapper pipelineJobMapper;
+    private final ImportJobMapper importJobMapper;
+    private final LlmUsageMapper llmUsageMapper;
+    private final QdrantClient qdrantClient;
+    private final ObjectStorage objectStorage;
     private final ObjectMapper objectMapper;
     private final AuditService auditService;
 
@@ -35,12 +60,28 @@ public class ProjectService {
             ProjectMapper projectMapper,
             ProjectMemberMapper memberMapper,
             ReviewMapper reviewMapper,
+            ReviewAspectMapper reviewAspectMapper,
+            EvidenceMapper evidenceMapper,
+            ReportMapper reportMapper,
+            PipelineJobMapper pipelineJobMapper,
+            ImportJobMapper importJobMapper,
+            LlmUsageMapper llmUsageMapper,
+            QdrantClient qdrantClient,
+            ObjectStorage objectStorage,
             ObjectMapper objectMapper,
             AuditService auditService
     ) {
         this.projectMapper = projectMapper;
         this.memberMapper = memberMapper;
         this.reviewMapper = reviewMapper;
+        this.reviewAspectMapper = reviewAspectMapper;
+        this.evidenceMapper = evidenceMapper;
+        this.reportMapper = reportMapper;
+        this.pipelineJobMapper = pipelineJobMapper;
+        this.importJobMapper = importJobMapper;
+        this.llmUsageMapper = llmUsageMapper;
+        this.qdrantClient = qdrantClient;
+        this.objectStorage = objectStorage;
         this.objectMapper = objectMapper;
         this.auditService = auditService;
     }
@@ -95,8 +136,49 @@ public class ProjectService {
         if (!SecurityUtils.isAdmin() && !project.getOwnerId().equals(SecurityUtils.requireUser().getUserId())) {
             throw BizException.of("FORBIDDEN", "只有负责人可以删除项目");
         }
+        Long running = pipelineJobMapper.selectCount(
+                new LambdaQueryWrapper<PipelineJob>()
+                        .eq(PipelineJob::getProjectId, id)
+                        .in(PipelineJob::getStatus, List.of(
+                                JobStatus.PENDING.name(),
+                                JobStatus.IMPORTING.name(),
+                                JobStatus.CLEANING.name(),
+                                JobStatus.ANALYZING.name(),
+                                JobStatus.INDEXING.name(),
+                                JobStatus.REPORTING.name()
+                        ))
+        );
+        Long importing = importJobMapper.selectCount(
+                new LambdaQueryWrapper<ImportJob>()
+                        .eq(ImportJob::getProjectId, id)
+                        .eq(ImportJob::getStatus, JobStatus.IMPORTING.name())
+        );
+        if ((running != null && running > 0) || (importing != null && importing > 0)) {
+            throw BizException.of("CONFLICT", "项目正在处理中，请完成后再删除");
+        }
+        List<ImportJob> imports = importJobMapper.selectList(
+                new LambdaQueryWrapper<ImportJob>().eq(ImportJob::getProjectId, id)
+        );
+        evidenceMapper.delete(new LambdaQueryWrapper<Evidence>().eq(Evidence::getProjectId, id));
+        reviewAspectMapper.delete(new LambdaQueryWrapper<ReviewAspect>().eq(ReviewAspect::getProjectId, id));
+        reportMapper.delete(new LambdaQueryWrapper<Report>().eq(Report::getProjectId, id));
+        pipelineJobMapper.delete(new LambdaQueryWrapper<PipelineJob>().eq(PipelineJob::getProjectId, id));
+        llmUsageMapper.delete(new LambdaQueryWrapper<LlmUsage>().eq(LlmUsage::getProjectId, id));
+        reviewMapper.delete(new LambdaQueryWrapper<Review>().eq(Review::getProjectId, id));
+        importJobMapper.delete(new LambdaQueryWrapper<ImportJob>().eq(ImportJob::getProjectId, id));
+        memberMapper.delete(new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getProjectId, id));
         projectMapper.deleteById(id);
         auditService.record("project.delete", "project", project.getName());
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                qdrantClient.deleteByProject(id);
+                for (ImportJob job : imports) {
+                    objectStorage.removeQuietly(job.getObjectKey());
+                    objectStorage.removeQuietly(job.getErrorObjectKey());
+                }
+            }
+        });
     }
 
     public List<Long> visibleProjectIdsForCurrent() {

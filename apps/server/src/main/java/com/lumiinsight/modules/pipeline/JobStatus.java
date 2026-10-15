@@ -8,5 +8,14 @@ public enum JobStatus {
     INDEXING,
     REPORTING,
     READY,
-    FAILED
+    FAILED;
+
+    public static boolean isRunning(String status) {
+        return PENDING.name().equals(status)
+                || IMPORTING.name().equals(status)
+                || CLEANING.name().equals(status)
+                || ANALYZING.name().equals(status)
+                || INDEXING.name().equals(status)
+                || REPORTING.name().equals(status);
+    }
 }

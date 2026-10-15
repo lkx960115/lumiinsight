@@ -6,6 +6,7 @@
         <p class="muted">{{ project.brand }} {{ project.mainModel }} · 评论 {{ project.reviewCount }} 条</p>
       </div>
       <div class="page-actions">
+        <el-button text @click="load">刷新</el-button>
         <el-button v-if="latestReport" text @click="router.push(`/app/reports/${latestReport.id}`)">打开报告</el-button>
         <el-button v-permission="'report:generate'" :disabled="busy" @click="generateReport">生成报告</el-button>
         <el-button v-permission="'pipeline:execute'" :disabled="busy" @click="triggerClean">仅清洗</el-button>
@@ -15,10 +16,10 @@
       </div>
     </div>
 
-    <div v-if="busy" class="run-banner is-running">
+    <div v-if="runningJob" class="run-banner is-running">
       <div>
         <strong>正在处理</strong>
-        <p>清洗和分析可能要一两分钟。请不要关闭页面，完成后会自动刷新。</p>
+        <p>{{ jobTypeLabel(runningJob.type) }}进行中（{{ jobStatusLabel(runningJob.status) }}）。可以离开此页，稍后再回来看结果。</p>
       </div>
     </div>
     <div v-else-if="latestFailed" class="run-banner is-failed">
@@ -192,13 +193,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import http from '@/api/http'
 import OverviewCharts from './OverviewCharts.vue'
-import { formatClock, formatDateTime, friendlyMessage, importRemark, jobStatusLabel, jobTypeLabel, pipelineRemark, platformLabel } from '@/utils/labels'
+import { formatClock, formatDateTime, friendlyMessage, importRemark, isRunningStatus, jobStatusLabel, jobTypeLabel, pipelineRemark, platformLabel } from '@/utils/labels'
 
 const route = useRoute()
 const router = useRouter()
@@ -215,9 +216,18 @@ const searchMode = ref<'text' | 'meaning'>('text')
 const reviewPage = ref(1)
 const reviewsLoading = ref(false)
 const reviewLoadError = ref('')
-const busy = ref(false)
+const reportBusy = ref(false)
+const submitting = ref(false)
+const watchingJobId = ref<number | null>(null)
 const latestReport = ref<any>(null)
+let pollTimer: ReturnType<typeof setInterval> | null = null
+const runningJob = computed(() => {
+  const row = pipeline.records[0]
+  return row && isRunningStatus(row.status) ? row : null
+})
+const busy = computed(() => reportBusy.value || submitting.value || Boolean(runningJob.value))
 const latestFailed = computed(() => {
+  if (runningJob.value) return null
   const row = pipeline.records[0]
   return row?.status === 'FAILED' ? row : null
 })
@@ -349,65 +359,83 @@ async function upload(opt: UploadRequestOptions) {
 
 async function generateReport() {
   if (busy.value) return
-  busy.value = true
+  reportBusy.value = true
   try {
     const { data } = await http.post(`/projects/${id}/reports`)
     ElMessage.success('已生成报告')
     router.push(`/app/reports/${data.data.id}`)
   } finally {
-    busy.value = false
+    reportBusy.value = false
   }
 }
 
 async function triggerClean() {
-  await runPipeline(`/projects/${id}/pipeline/clean`, '正在清洗评论…', false)
+  await runPipeline(`/projects/${id}/pipeline/clean`, '已开始清洗，可以离开此页')
 }
 
 async function triggerAnalyze() {
-  await runPipeline(`/projects/${id}/pipeline/analyze`, '正在分析情感与方面…', true)
+  await runPipeline(`/projects/${id}/pipeline/analyze`, '已开始分析，可以离开此页')
 }
 
 async function triggerRun() {
-  await runPipeline(`/projects/${id}/pipeline/run`, '正在清洗并分析…', true)
+  await runPipeline(`/projects/${id}/pipeline/run`, '已开始清洗并分析，可以离开此页')
 }
 
 async function retryJob(jobId: number) {
-  await runPipeline(`/pipeline/${jobId}/retry`, '正在重试失败任务…', true)
+  await runPipeline(`/pipeline/${jobId}/retry`, '已开始重试，可以离开此页')
 }
 
-async function runPipeline(url: string, pending: string, longWait: boolean) {
+function stopPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function startPoll() {
+  if (pollTimer) return
+  pollTimer = setInterval(() => {
+    tickPipeline()
+  }, 2000)
+}
+
+async function tickPipeline() {
+  await loadPipeline()
+  const latest = pipeline.records[0]
+  if (latest && isRunningStatus(latest.status)) {
+    return
+  }
+  const watched = watchingJobId.value
+  if (watched && (!latest || Number(latest.id) !== watched)) {
+    return
+  }
+  stopPoll()
+  watchingJobId.value = null
+  await load()
+  if (!watched || !latest || Number(latest.id) !== watched) {
+    return
+  }
+  if (latest.status === 'FAILED') {
+    ElMessage.error(friendlyMessage(latest.message) || '没有完成')
+  } else if (latest.status === 'READY') {
+    const note = pipelineRemark(latest.message)
+    ElMessage.success(!note || note === '—' ? '已完成' : note)
+  }
+}
+
+async function runPipeline(url: string, pending: string) {
   if (busy.value) {
     return
   }
-  busy.value = true
-  const beforeId = pipeline.records[0]?.id
+  submitting.value = true
   try {
-    await http.post(url)
+    const { data } = await http.post(url)
+    watchingJobId.value = Number(data.data?.id) || null
     ElMessage.success(pending)
-    const rounds = longWait ? 120 : 40
-    const waitMs = longWait ? 2000 : 400
-    for (let i = 0; i < rounds; i++) {
-      await new Promise((r) => setTimeout(r, waitMs))
-      await loadPipeline()
-      const latest = pipeline.records[0]
-      if (!latest || latest.id === beforeId) {
-        continue
-      }
-      if (latest.status === 'FAILED') {
-        ElMessage.error(friendlyMessage(latest.message) || '任务失败')
-        await load()
-        return
-      }
-      if (latest.status === 'READY') {
-        await load()
-        ElMessage.success(latest.message || '完成')
-        return
-      }
-    }
-    await load()
-    ElMessage.warning('任务仍在跑，请稍后刷新查看说明')
+    startPoll()
+    await tickPipeline()
   } finally {
-    busy.value = false
+    submitting.value = false
   }
 }
 
@@ -470,5 +498,12 @@ async function downloadErrors(jobId: number) {
   URL.revokeObjectURL(url)
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  if (runningJob.value) {
+    watchingJobId.value = Number(runningJob.value.id) || null
+    startPoll()
+  }
+})
+onUnmounted(stopPoll)
 </script>

@@ -11,6 +11,8 @@ import com.lumiinsight.modules.project.ProjectService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
+
 @Service
 public class PipelineService {
 
@@ -33,6 +35,7 @@ public class PipelineService {
 
     public PipelineJob triggerClean(Long projectId) {
         projectService.requireVisible(projectId);
+        assertNotRunning(projectId);
         PipelineJob job = insertJob(projectId, "CLEAN");
         auditService.record("pipeline.clean", "pipeline_job", String.valueOf(job.getId()));
         pipelineRunner.runClean(job.getId());
@@ -41,6 +44,7 @@ public class PipelineService {
 
     public PipelineJob triggerAnalyze(Long projectId) {
         projectService.requireVisible(projectId);
+        assertNotRunning(projectId);
         PipelineJob job = insertJob(projectId, "ANALYZE");
         auditService.record("pipeline.analyze", "pipeline_job", String.valueOf(job.getId()));
         pipelineRunner.runAnalyze(job.getId());
@@ -49,6 +53,7 @@ public class PipelineService {
 
     public PipelineJob triggerRun(Long projectId) {
         projectService.requireVisible(projectId);
+        assertNotRunning(projectId);
         PipelineJob job = insertJob(projectId, "RUN");
         auditService.record("pipeline.run", "pipeline_job", String.valueOf(job.getId()));
         pipelineRunner.runCleanThenAnalyze(job.getId());
@@ -95,6 +100,24 @@ public class PipelineService {
             q.eq(PipelineJob::getStatus, status);
         }
         return pipelineJobMapper.selectPage(new Page<>(page, size), q);
+    }
+
+    private void assertNotRunning(Long projectId) {
+        Long running = pipelineJobMapper.selectCount(
+                new LambdaQueryWrapper<PipelineJob>()
+                        .eq(PipelineJob::getProjectId, projectId)
+                        .in(PipelineJob::getStatus, List.of(
+                                JobStatus.PENDING.name(),
+                                JobStatus.IMPORTING.name(),
+                                JobStatus.CLEANING.name(),
+                                JobStatus.ANALYZING.name(),
+                                JobStatus.INDEXING.name(),
+                                JobStatus.REPORTING.name()
+                        ))
+        );
+        if (running != null && running > 0) {
+            throw BizException.of("CONFLICT", "正在处理中，请稍后再试。可以离开页面，完成后回来看结果。");
+        }
     }
 
     private PipelineJob insertJob(Long projectId, String type) {

@@ -112,6 +112,26 @@ public class QdrantClient {
         }
     }
 
+    public void deleteByProject(Long projectId) {
+        if (projectId == null) {
+            return;
+        }
+        try {
+            restClient.post()
+                    .uri("/collections/{name}/points/delete?wait=true", COLLECTION)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                            "filter", Map.of(
+                                    "must", List.of(Map.of("key", "projectId", "match", Map.of("value", projectId)))
+                            )
+                    ))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("删除项目向量失败 projectId={}：{}", projectId, e.getMessage());
+        }
+    }
+
     public boolean upsert(int dim, List<Map<String, Object>> points) {
         if (points == null || points.isEmpty()) {
             return true;

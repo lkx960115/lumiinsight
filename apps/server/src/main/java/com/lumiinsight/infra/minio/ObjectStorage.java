@@ -5,6 +5,9 @@ import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.GetObjectArgs;
+import io.minio.RemoveObjectArgs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +16,8 @@ import java.io.InputStream;
 
 @Component
 public class ObjectStorage {
+
+    private static final Logger log = LoggerFactory.getLogger(ObjectStorage.class);
 
     private final MinioClient client;
     private final String bucket;
@@ -57,6 +62,17 @@ public class ObjectStorage {
             return in.readAllBytes();
         } catch (Exception e) {
             throw new IllegalStateException("读取对象失败", e);
+        }
+    }
+
+    public void removeQuietly(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+        try {
+            client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(objectKey).build());
+        } catch (Exception e) {
+            log.warn("删除文件失败：{}", e.getMessage());
         }
     }
 
