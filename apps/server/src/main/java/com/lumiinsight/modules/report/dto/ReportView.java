@@ -47,6 +47,20 @@ public class ReportView {
         private String code;
         private String title;
         private List<Claim> claims;
+        private List<CompareRow> compare;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CompareRow {
+        private String name;
+        private long volume;
+        private long pos;
+        private long neg;
+        private long neu;
+        private String topPain;
     }
 
     @Data

@@ -7,6 +7,7 @@ import com.lumiinsight.common.exception.BizException;
 import com.lumiinsight.modules.evidence.dto.EvidenceView;
 import com.lumiinsight.modules.report.dto.ReportCiteExportRow;
 import com.lumiinsight.modules.report.dto.ReportClaimExportRow;
+import com.lumiinsight.modules.report.dto.ReportCompareExportRow;
 import com.lumiinsight.modules.report.dto.ReportView;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -69,7 +70,12 @@ public class ReportExporter {
             try {
                 WriteSheet claimSheet = EasyExcel.writerSheet(0, "结论").head(ReportClaimExportRow.class).build();
                 writer.write(claims, claimSheet);
-                WriteSheet citeSheet = EasyExcel.writerSheet(1, "引用").head(ReportCiteExportRow.class).build();
+                List<ReportCompareExportRow> compare = compareRows(report);
+                if (!compare.isEmpty()) {
+                    WriteSheet compareSheet = EasyExcel.writerSheet(1, "对照").head(ReportCompareExportRow.class).build();
+                    writer.write(compare, compareSheet);
+                }
+                WriteSheet citeSheet = EasyExcel.writerSheet(compare.isEmpty() ? 1 : 2, "引用").head(ReportCiteExportRow.class).build();
                 writer.write(cites, citeSheet);
             } finally {
                 writer.finish();
@@ -112,6 +118,7 @@ public class ReportExporter {
         if (report.getSections() != null) {
             for (ReportView.Section section : report.getSections()) {
                 md.append("## ").append(nullToEmpty(section.getTitle())).append("\n\n");
+                appendCompareMarkdown(md, section);
                 if (section.getClaims() == null) {
                     continue;
                 }
@@ -134,6 +141,47 @@ public class ReportExporter {
                     .append("\n\n");
         }
         return md.toString();
+    }
+
+    private static void appendCompareMarkdown(StringBuilder md, ReportView.Section section) {
+        if (section.getCompare() == null || section.getCompare().isEmpty()) {
+            return;
+        }
+        md.append("| 对象 | 原评 | 正向 | 负向 | 中性 | 主要痛点 |\n");
+        md.append("| --- | --- | --- | --- | --- | --- |\n");
+        for (ReportView.CompareRow row : section.getCompare()) {
+            md.append("| ").append(nullToEmpty(row.getName()))
+                    .append(" | ").append(row.getVolume())
+                    .append(" | ").append(row.getPos())
+                    .append(" | ").append(row.getNeg())
+                    .append(" | ").append(row.getNeu())
+                    .append(" | ").append(nullToEmpty(row.getTopPain()))
+                    .append(" |\n");
+        }
+        md.append("\n");
+    }
+
+    private static List<ReportCompareExportRow> compareRows(ReportView report) {
+        List<ReportCompareExportRow> rows = new ArrayList<>();
+        if (report.getSections() == null) {
+            return rows;
+        }
+        for (ReportView.Section section : report.getSections()) {
+            if (section.getCompare() == null) {
+                continue;
+            }
+            for (ReportView.CompareRow row : section.getCompare()) {
+                rows.add(new ReportCompareExportRow(
+                        row.getName(),
+                        row.getVolume(),
+                        row.getPos(),
+                        row.getNeg(),
+                        row.getNeu(),
+                        StringUtils.hasText(row.getTopPain()) ? row.getTopPain() : "—"
+                ));
+            }
+        }
+        return rows;
     }
 
     private List<ReportCiteExportRow> citeRows(ReportView report, Map<Long, Integer> numbers) {

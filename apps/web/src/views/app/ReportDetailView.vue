@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>{{ report.title }}</h2>
-        <p class="muted">{{ report.brand }} {{ report.mainModel }} · 每条结论都绑定了原评，点「查看原评」看对应原文。</p>
+        <p class="muted">{{ report.brand }} {{ report.mainModel }} · 每条结论都绑定了原评。竞品可并排看声量和痛点；点「查看原评」核原文。</p>
       </div>
       <div class="page-actions">
         <el-button type="primary" @click="exportVisible = true">导出</el-button>
@@ -45,7 +45,27 @@
 
     <el-card v-for="section in sections" :key="section.code" class="block">
       <template #header>{{ section.title }}</template>
-      <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。对不上时先补竞品，再导入带对应商品名的评论。</p>
+      <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。表里是两边声量和痛点；下面每句都能查看原评。对不上时先补竞品，再导入带对应商品名的评论。</p>
+      <el-table v-if="section.compare && section.compare.length" :data="section.compare" class="mt" empty-text="还没有对照数据。">
+        <el-table-column label="对象" min-width="140">
+          <template #default="{ row }">{{ row.name }}</template>
+        </el-table-column>
+        <el-table-column label="原评" width="88">
+          <template #default="{ row }">{{ row.volume }}</template>
+        </el-table-column>
+        <el-table-column label="正向" width="88">
+          <template #default="{ row }">{{ row.pos }}</template>
+        </el-table-column>
+        <el-table-column label="负向" width="88">
+          <template #default="{ row }">{{ row.neg }}</template>
+        </el-table-column>
+        <el-table-column label="中性" width="88">
+          <template #default="{ row }">{{ row.neu }}</template>
+        </el-table-column>
+        <el-table-column label="主要痛点" min-width="120">
+          <template #default="{ row }">{{ row.topPain || '—' }}</template>
+        </el-table-column>
+      </el-table>
       <div v-for="(claim, idx) in section.claims || []" :key="idx" class="report-claim">
         <p>{{ claim.text }}</p>
         <div class="row-actions">
@@ -99,7 +119,7 @@ const busy = ref(false)
 const exportVisible = ref(false)
 const drawer = ref(false)
 const currentList = ref<any[]>([])
-const sections = computed(() => (report.value?.sections || []).map((section: { code?: string; title?: string; claims?: { text?: string; evidenceIds?: number[] }[] }) => ({
+const sections = computed(() => (report.value?.sections || []).map((section: { code?: string; title?: string; claims?: { text?: string; evidenceIds?: number[] }[]; compare?: { name?: string; volume?: number; pos?: number; neg?: number; neu?: number; topPain?: string }[] }) => ({)
   ...section,
   followUp: competeFollowUp(section),
 })))

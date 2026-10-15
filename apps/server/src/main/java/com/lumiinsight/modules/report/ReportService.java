@@ -188,7 +188,12 @@ public class ReportService {
                 claims.add(ReportView.Claim.builder().text(claim.getText().trim()).evidenceIds(ids).build());
             }
             if (!claims.isEmpty()) {
-                out.add(ReportView.Section.builder().code(section.getCode()).title(section.getTitle()).claims(claims).build());
+                out.add(ReportView.Section.builder()
+                        .code(section.getCode())
+                        .title(section.getTitle())
+                        .claims(claims)
+                        .compare(section.getCompare())
+                        .build());
             }
         }
         return out;
