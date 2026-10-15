@@ -3,7 +3,7 @@
     <div class="login-stage">
       <p class="login-mark">灯鉴</p>
       <h1>登录工作台</h1>
-      <p class="muted">用首次启动日志里的管理员账号进入。密码只打印一次。</p>
+      <p class="muted">用首次启动日志里的管理员账号进入。密码只打印一次，登录后请改成自己的密码。</p>
       <el-form class="login-form" label-position="top" @submit.prevent="onSubmit">
         <el-form-item label="用户名">
           <el-input v-model="username" size="large" autocomplete="username" />

@@ -16,6 +16,7 @@
         <div>
           <el-button v-if="auth.isAdmin" text @click="router.push('/admin/users')">系统管理</el-button>
           <span class="user">{{ auth.user?.displayName }}</span>
+          <el-button text @click="pwdVisible = true">修改密码</el-button>
           <el-button text @click="onLogout">退出</el-button>
         </div>
       </el-header>
@@ -30,18 +31,28 @@
       </el-main>
     </el-container>
   </el-container>
+  <ChangePasswordDialog v-model="pwdVisible" :forced="Boolean(auth.user?.mustChangePwd)" />
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import http from '@/api/http'
+import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const healthHint = ref('')
+const pwdVisible = ref(false)
+watch(
+  () => auth.user?.mustChangePwd,
+  (need) => {
+    if (need) pwdVisible.value = true
+  },
+  { immediate: true },
+)
 const activeMenu = computed(() => {
   if (route.path.startsWith('/app/reports')) return '/app/reports'
   if (route.path.startsWith('/app/projects')) return '/app/projects'

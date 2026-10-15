@@ -5,6 +5,8 @@ import com.lumiinsight.common.exception.BizException;
 import com.lumiinsight.common.security.AuthUser;
 import com.lumiinsight.common.security.JwtService;
 import com.lumiinsight.common.security.SecurityUtils;
+import com.lumiinsight.modules.audit.AuditService;
+import com.lumiinsight.modules.auth.dto.ChangePasswordRequest;
 import com.lumiinsight.modules.auth.dto.LoginRequest;
 import com.lumiinsight.modules.auth.dto.LoginResponse;
 import com.lumiinsight.modules.sys.entity.SysPermission;
@@ -12,6 +14,7 @@ import com.lumiinsight.modules.sys.entity.SysUser;
 import com.lumiinsight.modules.sys.mapper.SysUserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -21,11 +24,18 @@ public class AuthService {
     private final SysUserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuditService auditService;
 
-    public AuthService(SysUserMapper userMapper, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+            SysUserMapper userMapper,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            AuditService auditService
+    ) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.auditService = auditService;
     }
 
     public LoginResponse login(LoginRequest req) {
@@ -47,6 +57,28 @@ public class AuthService {
             throw BizException.of("UNAUTHORIZED", "请先登录");
         }
         return toLoginResponse(user);
+    }
+
+    public void changePassword(ChangePasswordRequest req) {
+        AuthUser current = SecurityUtils.requireUser();
+        SysUser user = userMapper.selectById(current.getUserId());
+        if (user == null) {
+            throw BizException.of("UNAUTHORIZED", "请先登录");
+        }
+        if (!passwordEncoder.matches(req.getCurrentPassword(), user.getPasswordHash())) {
+            throw BizException.of("AUTH_FAILED", "当前密码不正确");
+        }
+        String next = req.getNewPassword() == null ? "" : req.getNewPassword().trim();
+        if (!StringUtils.hasText(next) || next.length() < 8) {
+            throw BizException.of("VALIDATION_ERROR", "新密码至少 8 位");
+        }
+        if (passwordEncoder.matches(next, user.getPasswordHash())) {
+            throw BizException.of("VALIDATION_ERROR", "新密码不能与当前密码相同");
+        }
+        user.setPasswordHash(passwordEncoder.encode(next));
+        user.setMustChangePwd(0);
+        userMapper.updateById(user);
+        auditService.record("password.change", "user", user.getUsername());
     }
 
     public LoginResponse toLoginResponse(SysUser user) {

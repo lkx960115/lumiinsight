@@ -51,7 +51,13 @@
       <el-form label-width="90px">
         <el-form-item label="用户名"><el-input v-model="form.username" :disabled="Boolean(form.id)" /></el-form-item>
         <el-form-item label="显示名"><el-input v-model="form.displayName" /></el-form-item>
-        <el-form-item label="密码"><el-input v-model="form.password" type="password" :placeholder="form.id ? '留空则不改' : ''" /></el-form-item>
+        <el-form-item label="密码">
+          <el-input
+            v-model="form.password"
+            type="password"
+            :placeholder="form.id ? '留空则不改；填写后对方下次登录需改密' : '至少 8 位，首次登录需改成自己的密码'"
+          />
+        </el-form-item>
         <el-form-item label="角色">
           <el-select v-model="form.roleCode" style="width: 100%">
             <el-option v-for="r in roles" :key="r.code" :label="r.name" :value="r.code" />

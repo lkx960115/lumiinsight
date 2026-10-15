@@ -70,9 +70,9 @@ public class UserAdminService {
         SysUser user = new SysUser();
         user.setUsername(req.getUsername().trim());
         user.setDisplayName(req.getDisplayName().trim());
-        user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
+        user.setPasswordHash(encodePassword(req.getPassword()));
         user.setEnabled(req.getEnabled());
-        user.setMustChangePwd(0);
+        user.setMustChangePwd(1);
         userMapper.insert(user);
         bindRole(user.getId(), role.getId());
         auditService.record("user.create", "user", user.getUsername());
@@ -88,12 +88,21 @@ public class UserAdminService {
         user.setDisplayName(req.getDisplayName().trim());
         user.setEnabled(req.getEnabled());
         if (StringUtils.hasText(req.getPassword())) {
-            user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
+            user.setPasswordHash(encodePassword(req.getPassword()));
+            user.setMustChangePwd(1);
         }
         userMapper.updateById(user);
         userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, id));
         bindRole(id, role.getId());
         auditService.record("user.update", "user", user.getUsername());
+    }
+
+    private String encodePassword(String raw) {
+        String password = raw == null ? "" : raw.trim();
+        if (password.length() < 8) {
+            throw BizException.of("VALIDATION_ERROR", "密码至少 8 位");
+        }
+        return passwordEncoder.encode(password);
     }
 
     private SysRole requireRole(String code) {

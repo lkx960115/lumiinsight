@@ -80,6 +80,7 @@ export function auditActionLabel(action?: string | null) {
     'dict.save': '更新方面词典',
     'user.create': '新建用户',
     'user.update': '更新用户',
+    'password.change': '修改密码',
   }
   if (!action) return '—'
   return map[action] || action

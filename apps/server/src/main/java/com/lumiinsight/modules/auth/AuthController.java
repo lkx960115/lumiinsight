@@ -1,6 +1,7 @@
 package com.lumiinsight.modules.auth;
 
 import com.lumiinsight.common.api.ApiResult;
+import com.lumiinsight.modules.auth.dto.ChangePasswordRequest;
 import com.lumiinsight.modules.auth.dto.LoginRequest;
 import com.lumiinsight.modules.auth.dto.LoginResponse;
 import jakarta.validation.Valid;
@@ -28,5 +29,11 @@ public class AuthController {
     @GetMapping("/me")
     public ApiResult<LoginResponse> me() {
         return ApiResult.ok(authService.me());
+    }
+
+    @PostMapping("/password")
+    public ApiResult<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
+        return ApiResult.ok();
     }
 }
