@@ -45,7 +45,11 @@ public class ReportExporter {
             return new File(markdown(report, numbers).getBytes(StandardCharsets.UTF_8),
                     safeName(report.getTitle()) + ".md", MediaType.TEXT_PLAIN);
         }
-        throw BizException.of("BAD_REQUEST", "只支持导出表格或文稿");
+        if ("pdf".equalsIgnoreCase(format)) {
+            return new File(ReportPdfWriter.render(report, numbers, citeRows(report, numbers)),
+                    safeName(report.getTitle()) + ".pdf", MediaType.APPLICATION_PDF);
+        }
+        throw BizException.of("BAD_REQUEST", "只支持导出表格、文稿或 PDF");
     }
 
     private byte[] excel(ReportView report, Map<Long, Integer> numbers) {

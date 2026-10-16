@@ -120,12 +120,13 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="exportVisible" title="导出报告" width="480px">
-      <p class="muted">表格方便筛选引用；文稿方便粘贴转发。两种都会带引用编号，对应文末原评。</p>
+    <el-dialog v-model="exportVisible" title="导出报告" width="520px">
+      <p class="muted">PDF 方便发给领导；表格方便筛选引用；文稿方便粘贴转发。三种都会带引用编号，对应文末原评。</p>
       <template #footer>
         <el-button @click="exportVisible = false">取消</el-button>
         <el-button :disabled="busy" @click="download('md')">导出文稿</el-button>
-        <el-button type="primary" :disabled="busy" @click="download('xlsx')">导出表格</el-button>
+        <el-button :disabled="busy" @click="download('xlsx')">导出表格</el-button>
+        <el-button type="primary" :disabled="busy" @click="download('pdf')">导出 PDF</el-button>
       </template>
     </el-dialog>
 
@@ -146,7 +147,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '@/api/http'
-import { formatDateTime, formatMonth, platformLabel, sentimentLabel } from '@/utils/labels'
+import { formatDateTime, formatMonth, friendlyMessage, platformLabel, sentimentLabel } from '@/utils/labels'
 
 const route = useRoute()
 const router = useRouter()
@@ -213,7 +214,7 @@ function openClaim(claim: { evidenceIds?: number[] }) {
   drawer.value = true
 }
 
-async function download(format: 'xlsx' | 'md') {
+async function download(format: 'xlsx' | 'md' | 'pdf') {
   if (!report.value?.id || busy.value) return
   busy.value = true
   try {
@@ -226,7 +227,7 @@ async function download(format: 'xlsx' | 'md') {
       const text = await blob.text()
       try {
         const payload = JSON.parse(text)
-        ElMessage.error(payload.message || '导出失败')
+        ElMessage.error(friendlyMessage(payload.message) || '导出失败')
       } catch {
         ElMessage.error('导出失败')
       }
@@ -239,14 +240,14 @@ async function download(format: 'xlsx' | 'md') {
     a.click()
     URL.revokeObjectURL(url)
     exportVisible.value = false
-    ElMessage.success(format === 'xlsx' ? '已导出表格' : '已导出文稿')
+    ElMessage.success(format === 'xlsx' ? '已导出表格' : format === 'pdf' ? '已导出 PDF' : '已导出文稿')
   } finally {
     busy.value = false
   }
 }
 
-function filenameFromHeader(raw: unknown, format: 'xlsx' | 'md') {
-  const fallback = format === 'xlsx' ? '口碑报告.xlsx' : '口碑报告.md'
+function filenameFromHeader(raw: unknown, format: 'xlsx' | 'md' | 'pdf') {
+  const fallback = format === 'xlsx' ? '口碑报告.xlsx' : format === 'pdf' ? '口碑报告.pdf' : '口碑报告.md'
   const header = String(raw || '')
   const star = header.match(/filename\*=UTF-8''([^;]+)/i)
   if (star) {
