@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.absa import analyze_reviews
+from app.ask import answer_question
 from app.clean import clean_reviews
 from app.llm import embed_texts
 
@@ -68,7 +69,7 @@ class WorkerHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
-        if path not in {"/v1/jobs/clean", "/v1/jobs/analyze", "/v1/jobs/embed"}:
+        if path not in {"/v1/jobs/clean", "/v1/jobs/analyze", "/v1/jobs/embed", "/v1/jobs/ask"}:
             self._send(404, {"code": "NOT_FOUND", "message": "not found"})
             return
         raw = read_http_body(self.headers, self.rfile)
@@ -76,6 +77,27 @@ class WorkerHandler(BaseHTTPRequestHandler):
             data = json.loads(raw.decode("utf-8") or "{}")
         except json.JSONDecodeError:
             self._send(400, {"code": "BAD_JSON", "message": "请求体不是 JSON"})
+            return
+        if path == "/v1/jobs/ask":
+            question = str(data.get("question") or "").strip()
+            snippets = data.get("snippets") or data.get("reviews") or []
+            if not isinstance(snippets, list):
+                snippets = []
+            llm = data.get("llm") if isinstance(data.get("llm"), dict) else None
+            result = answer_question(question, snippets, llm)
+            self._send(
+                200,
+                {
+                    "code": "0",
+                    "message": "ok",
+                    "jobId": data.get("jobId"),
+                    "projectId": data.get("projectId"),
+                    "answer": result.get("answer"),
+                    "evidenceIds": result.get("evidenceIds") or [],
+                    "source": result.get("source") or "rule",
+                    "usage": result.get("usage") or {},
+                },
+            )
             return
         reviews = data.get("reviews") or []
         if not isinstance(reviews, list):

@@ -8,6 +8,7 @@ User/RBAC
           │                                    └── AnalysisResult ──► Aspect
           ├── LlmRoute（分析时读取，不反向依赖项目）
           ├── Evidence ◄── Review + ReportSection
+          ├── Ask（只读本项目原评，无证据不编）
           └── Report ──► 导出表格/文稿
 LlmRoute ──► LlmUsage（只读展示，不回写报告）
 ```

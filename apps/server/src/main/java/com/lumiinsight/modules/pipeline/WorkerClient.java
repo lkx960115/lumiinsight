@@ -80,6 +80,31 @@ public class WorkerClient {
     }
 
     @SuppressWarnings("unchecked")
+    public Map<String, Object> ask(
+            Long projectId,
+            String question,
+            List<Map<String, Object>> snippets,
+            Map<String, Object> llm
+    ) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("projectId", projectId);
+        body.put("question", question);
+        body.put("snippets", snippets == null ? List.of() : snippets);
+        body.put("llm", llm);
+        return analyzeClient.post()
+                .uri("/v1/jobs/ask")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    String raw = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+                    throw new IllegalStateException(workerErrorMessage(raw, response.getStatusCode().value()));
+                })
+                .body(Map.class);
+    }
+
+    @SuppressWarnings("unchecked")
     public Map<String, Object> embed(
             Long jobId,
             Long projectId,

@@ -199,6 +199,7 @@ const PURPOSE: Record<string, { name: string; hint: string }> = {
   report_summary: { name: '报告摘要', hint: '基于统计和原声写摘要，不能空编' },
   embedding: { name: '向量检索', hint: '按意思找原评，须配 embedding 模型' },
   spam_classify: { name: '去水辅助', hint: '可选；清洗仍以规则为主' },
+  ask: { name: '问原评', hint: '只根据本项目原评回答，无依据不编' },
 }
 
 const providers = ref<any[]>([])

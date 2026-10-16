@@ -32,6 +32,7 @@
     </el-container>
   </el-container>
   <ChangePasswordDialog v-model="pwdVisible" :forced="Boolean(auth.user?.mustChangePwd)" />
+  <AskDock />
 </template>
 
 <script setup lang="ts">
@@ -39,6 +40,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import http from '@/api/http'
+import AskDock from '@/components/AskDock.vue'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 
 const route = useRoute()

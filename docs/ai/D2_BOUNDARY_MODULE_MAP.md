@@ -7,7 +7,7 @@
 | 工作台 + 管理端 UI | `apps/web` `/app` 与 `/admin` |
 | 用户登录、RBAC、项目、导入 | `apps/server` |
 | 多模型配置与调用路由 | `apps/server` + Worker 客户端 |
-| 清洗 / ABSA / 向量 | `apps/ai-worker` |
+| 清洗 / ABSA / 向量 / 问原评 | `apps/ai-worker` |
 | Agent 文档 | `docs/ai` |
 
 ## 2. 本仓不负责

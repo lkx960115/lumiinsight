@@ -37,6 +37,7 @@
           <el-option label="报告摘要" value="report_summary" />
           <el-option label="向量检索" value="embedding" />
           <el-option label="去水辅助" value="spam_classify" />
+          <el-option label="问原评" value="ask" />
         </el-select>
         <el-button @click="search">查询</el-button>
         <el-button text @click="reset">重置</el-button>

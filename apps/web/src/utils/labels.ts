@@ -57,6 +57,7 @@ export function purposeLabel(code?: string | null) {
     report_summary: '报告摘要',
     embedding: '向量检索',
     spam_classify: '去水辅助',
+    ask: '问原评',
   }
   if (!code) return ''
   return map[code] || code
