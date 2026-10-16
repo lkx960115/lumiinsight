@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>{{ project.name }}</h2>
-        <p class="muted">{{ project.brand }} {{ project.mainModel }} · 评论 {{ project.reviewCount }} 条</p>
+        <p class="muted">{{ project.brand }} {{ project.mainModel }} · 评论 {{ project.reviewCount }} 条{{ competitorNote }}</p>
       </div>
       <div class="page-actions">
         <el-button text @click="load">刷新</el-button>
@@ -29,6 +29,16 @@
       </div>
       <el-button v-permission="'pipeline:execute'" :disabled="busy" @click="retryJob(latestFailed.id)">重试</el-button>
     </div>
+
+    <el-card class="block">
+      <template #header>竞品</template>
+      <p class="muted">名称要和评论里的商品名对得上。改完后重新生成报告，对照才会更新。</p>
+      <p v-if="competitorNames.length">{{ competitorNames.join('、') }}</p>
+      <p v-else>还没有填写竞品。点编辑补上名称，并导入对应评论。</p>
+      <div class="row-actions">
+        <el-button v-permission="'project:edit'" text @click="openEdit">编辑</el-button>
+      </div>
+    </el-card>
 
     <el-card class="block">
       <template #header>评论概览</template>
@@ -189,6 +199,29 @@
         @current-change="loadReviews"
       />
     </el-card>
+
+    <el-dialog v-model="editVisible" title="编辑项目" width="560px">
+      <el-form label-width="90px">
+        <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
+        <el-form-item label="品类"><el-input v-model="form.category" /></el-form-item>
+        <el-form-item label="品牌"><el-input v-model="form.brand" /></el-form-item>
+        <el-form-item label="主型号"><el-input v-model="form.mainModel" /></el-form-item>
+        <el-form-item label="竞品"><el-input v-model="competitorsText" placeholder="逗号分隔，需与评论商品名对应" /></el-form-item>
+        <el-form-item label="关键词"><el-input v-model="keywordsText" placeholder="逗号分隔" /></el-form-item>
+        <el-form-item label="平台">
+          <el-checkbox-group v-model="form.platforms">
+            <el-checkbox label="xiaohongshu">小红书</el-checkbox>
+            <el-checkbox label="jd">京东</el-checkbox>
+            <el-checkbox label="taobao">淘宝</el-checkbox>
+            <el-checkbox label="douyin">抖音</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveProject">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -220,7 +253,25 @@ const reportBusy = ref(false)
 const submitting = ref(false)
 const watchingJobId = ref<number | null>(null)
 const latestReport = ref<any>(null)
+const editVisible = ref(false)
+const competitorsText = ref('')
+const keywordsText = ref('')
+const form = reactive({
+  name: '',
+  category: '',
+  brand: '',
+  mainModel: '',
+  platforms: [] as string[],
+})
 let pollTimer: ReturnType<typeof setInterval> | null = null
+const competitorNames = computed(() => {
+  const rows = project.value?.competitors
+  return Array.isArray(rows) ? rows.filter(Boolean) : []
+})
+const competitorNote = computed(() => {
+  if (!competitorNames.value.length) return ''
+  return ' · 竞品 ' + competitorNames.value.join('、')
+})
 const runningJob = computed(() => {
   const row = pipeline.records[0]
   return row && isRunningStatus(row.status) ? row : null
@@ -268,6 +319,38 @@ function resetReviews() {
 function onSelectAspect(name: string) {
   aspect.value = name
   searchReviews()
+}
+
+function splitNames(value: string) {
+  return value.split(/[,，]/).map((s) => s.trim()).filter(Boolean)
+}
+
+function openEdit() {
+  const row = project.value
+  if (!row) return
+  form.name = row.name || ''
+  form.category = row.category || ''
+  form.brand = row.brand || ''
+  form.mainModel = row.mainModel || ''
+  form.platforms = [...(row.platforms || [])]
+  competitorsText.value = competitorNames.value.join(',')
+  keywordsText.value = (row.keywords || []).join(',')
+  editVisible.value = true
+}
+
+async function saveProject() {
+  await http.put(`/projects/${id}`, {
+    name: form.name,
+    category: form.category,
+    brand: form.brand,
+    mainModel: form.mainModel,
+    competitors: splitNames(competitorsText.value),
+    keywords: splitNames(keywordsText.value),
+    platforms: form.platforms,
+  })
+  ElMessage.success('已保存')
+  editVisible.value = false
+  await load()
 }
 
 async function load() {

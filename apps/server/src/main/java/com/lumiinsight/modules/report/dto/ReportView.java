@@ -48,6 +48,7 @@ public class ReportView {
         private String title;
         private List<Claim> claims;
         private List<CompareRow> compare;
+        private List<AspectCompareRow> aspectCompare;
     }
 
     @Data
@@ -61,6 +62,25 @@ public class ReportView {
         private long neg;
         private long neu;
         private String topPain;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AspectCompareRow {
+        private String aspect;
+        private List<AspectScore> scores;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AspectScore {
+        private String name;
+        private long pos;
+        private long neg;
     }
 
     @Data

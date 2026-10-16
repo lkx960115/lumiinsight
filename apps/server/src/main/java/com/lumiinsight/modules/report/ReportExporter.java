@@ -5,6 +5,7 @@ import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.metadata.WriteSheet;
 import com.lumiinsight.common.exception.BizException;
 import com.lumiinsight.modules.evidence.dto.EvidenceView;
+import com.lumiinsight.modules.report.dto.ReportAspectCompareExportRow;
 import com.lumiinsight.modules.report.dto.ReportCiteExportRow;
 import com.lumiinsight.modules.report.dto.ReportClaimExportRow;
 import com.lumiinsight.modules.report.dto.ReportCompareExportRow;
@@ -71,11 +72,17 @@ public class ReportExporter {
                 WriteSheet claimSheet = EasyExcel.writerSheet(0, "结论").head(ReportClaimExportRow.class).build();
                 writer.write(claims, claimSheet);
                 List<ReportCompareExportRow> compare = compareRows(report);
+                List<ReportAspectCompareExportRow> aspects = aspectCompareRows(report);
+                int sheet = 1;
                 if (!compare.isEmpty()) {
-                    WriteSheet compareSheet = EasyExcel.writerSheet(1, "对照").head(ReportCompareExportRow.class).build();
+                    WriteSheet compareSheet = EasyExcel.writerSheet(sheet++, "对照").head(ReportCompareExportRow.class).build();
                     writer.write(compare, compareSheet);
                 }
-                WriteSheet citeSheet = EasyExcel.writerSheet(compare.isEmpty() ? 1 : 2, "引用").head(ReportCiteExportRow.class).build();
+                if (!aspects.isEmpty()) {
+                    WriteSheet aspectSheet = EasyExcel.writerSheet(sheet++, "方面对照").head(ReportAspectCompareExportRow.class).build();
+                    writer.write(aspects, aspectSheet);
+                }
+                WriteSheet citeSheet = EasyExcel.writerSheet(sheet, "引用").head(ReportCiteExportRow.class).build();
                 writer.write(cites, citeSheet);
             } finally {
                 writer.finish();
@@ -159,6 +166,56 @@ public class ReportExporter {
                     .append(" |\n");
         }
         md.append("\n");
+        appendAspectCompareMarkdown(md, section);
+    }
+
+    private static void appendAspectCompareMarkdown(StringBuilder md, ReportView.Section section) {
+        if (section.getAspectCompare() == null || section.getAspectCompare().isEmpty()) {
+            return;
+        }
+        List<String> names = new ArrayList<>();
+        if (section.getAspectCompare().get(0).getScores() != null) {
+            for (ReportView.AspectScore score : section.getAspectCompare().get(0).getScores()) {
+                names.add(score.getName());
+            }
+        }
+        if (names.isEmpty()) {
+            return;
+        }
+        md.append("| 方面");
+        for (String name : names) {
+            md.append(" | ").append(nullToEmpty(name));
+        }
+        md.append(" |\n| ---");
+        for (int i = 0; i < names.size(); i++) {
+            md.append(" | ---");
+        }
+        md.append(" |\n");
+        for (ReportView.AspectCompareRow row : section.getAspectCompare()) {
+            md.append("| ").append(nullToEmpty(row.getAspect()));
+            for (String name : names) {
+                ReportView.AspectScore score = scoreOf(row, name);
+                if (score == null) {
+                    md.append(" | —");
+                } else {
+                    md.append(" | 正向 ").append(score.getPos()).append(" / 负向 ").append(score.getNeg());
+                }
+            }
+            md.append(" |\n");
+        }
+        md.append("\n");
+    }
+
+    private static ReportView.AspectScore scoreOf(ReportView.AspectCompareRow row, String name) {
+        if (row.getScores() == null) {
+            return null;
+        }
+        for (ReportView.AspectScore score : row.getScores()) {
+            if (name.equals(score.getName())) {
+                return score;
+            }
+        }
+        return null;
     }
 
     private static List<ReportCompareExportRow> compareRows(ReportView report) {
@@ -179,6 +236,32 @@ public class ReportExporter {
                         row.getNeu(),
                         StringUtils.hasText(row.getTopPain()) ? row.getTopPain() : "—"
                 ));
+            }
+        }
+        return rows;
+    }
+
+    private static List<ReportAspectCompareExportRow> aspectCompareRows(ReportView report) {
+        List<ReportAspectCompareExportRow> rows = new ArrayList<>();
+        if (report.getSections() == null) {
+            return rows;
+        }
+        for (ReportView.Section section : report.getSections()) {
+            if (section.getAspectCompare() == null) {
+                continue;
+            }
+            for (ReportView.AspectCompareRow row : section.getAspectCompare()) {
+                if (row.getScores() == null) {
+                    continue;
+                }
+                for (ReportView.AspectScore score : row.getScores()) {
+                    rows.add(new ReportAspectCompareExportRow(
+                            row.getAspect(),
+                            score.getName(),
+                            score.getPos(),
+                            score.getNeg()
+                    ));
+                }
             }
         }
         return rows;

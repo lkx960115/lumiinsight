@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>{{ report.title }}</h2>
-        <p class="muted">{{ report.brand }} {{ report.mainModel }} · 每条结论都绑定了原评。竞品可并排看声量和痛点；点「查看原评」核原文。</p>
+        <p class="muted">{{ report.brand }} {{ report.mainModel }} · 每条结论都绑定了原评。竞品可并排看声量，并按方面对照；点「查看原评」核原文。</p>
       </div>
       <div class="page-actions">
         <el-button type="primary" @click="exportVisible = true">导出</el-button>
@@ -45,7 +45,7 @@
 
     <el-card v-for="section in sections" :key="section.code" class="block">
       <template #header>{{ section.title }}</template>
-      <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。每个竞品单独一行，没有对应原评的不进表。下面每句都能查看原评。</p>
+      <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。每个竞品单独一行，没有对应原评的不进表。下面按方面看谁负向更集中，每句都能查看原评。</p>
       <el-table v-if="section.compare && section.compare.length" :data="section.compare" class="mt" empty-text="还没有对照数据。">
         <el-table-column label="对象" min-width="140">
           <template #default="{ row }">{{ row.name }}</template>
@@ -66,6 +66,24 @@
           <template #default="{ row }">{{ row.topPain || '—' }}</template>
         </el-table-column>
       </el-table>
+      <el-table
+        v-if="section.aspectCompare && section.aspectCompare.length"
+        :data="section.aspectCompare"
+        class="mt"
+        empty-text="这些方面还没有对照原评。"
+      >
+        <el-table-column label="方面" min-width="120">
+          <template #default="{ row }">{{ row.aspect }}</template>
+        </el-table-column>
+        <el-table-column
+          v-for="product in aspectProducts(section)"
+          :key="product"
+          :label="product"
+          min-width="140"
+        >
+          <template #default="{ row }">{{ aspectCell(row, product) }}</template>
+        </el-table-column>
+      </el-table>
       <div v-for="(claim, idx) in section.claims || []" :key="idx" class="report-claim">
         <p>{{ claim.text }}</p>
         <div class="row-actions">
@@ -78,7 +96,7 @@
     </el-card>
     <el-card v-if="!hasCompete" class="block">
       <template #header>竞品对照</template>
-      <p class="muted">这份报告还没有竞品对照。在项目里填写竞品，并导入带对应商品名的评论后，再点「生成报告」。</p>
+      <p class="muted">这份报告还没有竞品对照。在项目详情填写竞品，并导入带对应商品名的评论后，再点「生成报告」。</p>
       <div class="row-actions">
         <el-button text @click="router.push(`/app/projects/${report.projectId}`)">去项目</el-button>
       </div>
@@ -131,6 +149,20 @@ function competeFollowUp(section: { code?: string; claims?: { text?: string }[] 
   if (text.includes('还没填写竞品')) return '去项目填写竞品'
   if (text.includes('还没有对应条目')) return '去项目导入竞品评论'
   return ''
+}
+
+function aspectProducts(section: { aspectCompare?: { scores?: { name?: string }[] }[] }) {
+  const first = section.aspectCompare?.[0]
+  return (first?.scores || []).map((score) => score.name || '').filter(Boolean)
+}
+
+function aspectCell(row: { scores?: { name?: string; pos?: number; neg?: number }[] }, product: string) {
+  const score = (row.scores || []).find((item) => item.name === product)
+  if (!score) return '—'
+  const pos = Number(score.pos) || 0
+  const neg = Number(score.neg) || 0
+  if (pos === 0 && neg === 0) return '—'
+  return `正向 ${pos}，负向 ${neg}`
 }
 
 async function load() {

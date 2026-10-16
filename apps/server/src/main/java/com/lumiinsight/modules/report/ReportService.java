@@ -193,6 +193,7 @@ public class ReportService {
                         .title(section.getTitle())
                         .claims(claims)
                         .compare(section.getCompare())
+                        .aspectCompare(section.getAspectCompare())
                         .build());
             }
         }

@@ -281,7 +281,7 @@ public class ReportComposer {
         List<String> missing = rivals.stream().filter(name -> byRival.get(name).isEmpty()).toList();
         List<ReportView.Claim> claims = new ArrayList<>();
         if (rivals.isEmpty()) {
-            add(claims, "项目还没填写竞品。在项目里补上竞品名称，并导入带对应商品名的评论后，这里会对照声量和痛点。", ids(first(evidence, 3), allowed));
+            add(claims, "项目还没填写竞品。在项目详情补上竞品名称，并导入带对应商品名的评论后，这里会对照声量和方面。", ids(first(evidence, 3), allowed));
             return section("compete", "竞品对照", claims);
         }
         if (present.isEmpty()) {
@@ -291,43 +291,27 @@ public class ReportComposer {
         String ownName = StringUtils.hasText(ownKey) ? ownKey : "本型号";
         Counts ownCounts = countsOf(own, byReview);
         List<ReportView.CompareRow> compare = new ArrayList<>();
+        Map<String, List<Evidence>> byParty = new LinkedHashMap<>();
         if (ownCounts.volume > 0) {
             compare.add(compareRow(ownName, ownCounts, own));
+            byParty.put(ownName, own);
         }
         for (String rival : present) {
             List<Evidence> rows = byRival.get(rival);
             compare.add(compareRow(rival, countsOf(rows, byReview), rows));
+            byParty.put(rival, rows);
         }
+        List<ReportView.AspectCompareRow> aspectCompare = aspectCompareOf(byParty);
         add(claims, ownName + " 原评 " + ownCounts.volume + " 条（正向 " + ownCounts.pos + "、负向 " + ownCounts.neg
                         + "），已对照 " + present.size() + " 个竞品：" + String.join("、", present) + "。",
                 ids(first(all(own, byRival.get(present.get(0))), 3), allowed));
         addPainClaim(claims, ownName, own, allowed);
-        int shown = 0;
-        for (String rival : present) {
-            if (shown >= 4) {
-                break;
-            }
-            List<Evidence> rows = byRival.get(rival);
-            Counts counts = countsOf(rows, byReview);
-            String pain = topPainName(rows);
-            if (pain != null) {
-                List<Evidence> neg = bySentiment(byAspect(rows, pain), "neg");
-                add(claims, "「" + rival + "」原评 " + counts.volume + " 条（正向 " + counts.pos + "、负向 " + counts.neg
-                                + "），最集中痛点「" + pain + "」：「" + quoteOf(neg.get(0)) + "」。",
-                        ids(first(neg, 3), allowed));
-            } else {
-                add(claims, "「" + rival + "」原评 " + counts.volume + " 条（正向 " + counts.pos + "、负向 " + counts.neg
-                                + "），负向很少，对照时不要只看声量。",
-                        ids(first(rows, 3), allowed));
-            }
-            addCompeteGaps(claims, ownName, rival, own, rows, allowed);
-            shown++;
-        }
+        addAspectCompareClaims(claims, ownName, aspectCompare, byParty, allowed);
         if (!missing.isEmpty()) {
             add(claims, "已填写竞品「" + String.join("、", missing) + "」，但评论商品名里还没有对应条目。请导入竞品评论后再生成。",
                     ids(first(own.isEmpty() ? evidence : own, 3), allowed));
         }
-        return section("compete", "竞品对照", claims, compare);
+        return section("compete", "竞品对照", claims, compare, aspectCompare);
     }
 
     private static void addPainClaim(List<ReportView.Claim> claims, String name, List<Evidence> rows, Set<Long> allowed) {
@@ -339,45 +323,86 @@ public class ReportComposer {
         add(claims, name + " 最集中痛点「" + pain + "」：「" + quoteOf(neg.get(0)) + "」。", ids(first(neg, 3), allowed));
     }
 
-    private void addCompeteGaps(
+    private static List<ReportView.AspectCompareRow> aspectCompareOf(Map<String, List<Evidence>> byParty) {
+        Map<String, Long> weight = new LinkedHashMap<>();
+        for (List<Evidence> rows : byParty.values()) {
+            for (Evidence row : rows) {
+                if (!StringUtils.hasText(row.getAspectName())) {
+                    continue;
+                }
+                long add = "neg".equals(row.getSentiment()) ? 2L : 1L;
+                weight.merge(row.getAspectName(), add, Long::sum);
+            }
+        }
+        List<String> aspects = weight.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(Map.Entry::getKey)
+                .limit(8)
+                .toList();
+        List<ReportView.AspectCompareRow> out = new ArrayList<>();
+        for (String aspect : aspects) {
+            List<ReportView.AspectScore> scores = new ArrayList<>();
+            for (Map.Entry<String, List<Evidence>> party : byParty.entrySet()) {
+                List<Evidence> rows = byAspect(party.getValue(), aspect);
+                scores.add(ReportView.AspectScore.builder()
+                        .name(party.getKey())
+                        .pos(bySentiment(rows, "pos").size())
+                        .neg(bySentiment(rows, "neg").size())
+                        .build());
+            }
+            out.add(ReportView.AspectCompareRow.builder().aspect(aspect).scores(scores).build());
+        }
+        return out;
+    }
+
+    private static void addAspectCompareClaims(
             List<ReportView.Claim> claims,
             String ownName,
-            String rivalName,
-            List<Evidence> own,
-            List<Evidence> rivalEv,
+            List<ReportView.AspectCompareRow> aspectCompare,
+            Map<String, List<Evidence>> byParty,
             Set<Long> allowed
     ) {
-        Map<String, Long> ownNeg = negByAspect(own);
-        Map<String, Long> rivalNeg = negByAspect(rivalEv);
-        Set<String> names = new HashSet<>();
-        names.addAll(ownNeg.keySet());
-        names.addAll(rivalNeg.keySet());
-        String worseOwn = null;
-        long worseOwnDelta = 0;
-        String worseRival = null;
-        long worseRivalDelta = 0;
-        for (String name : names) {
-            long a = ownNeg.getOrDefault(name, 0L);
-            long b = rivalNeg.getOrDefault(name, 0L);
-            if (a - b > worseOwnDelta) {
-                worseOwnDelta = a - b;
-                worseOwn = name;
+        int n = 0;
+        for (ReportView.AspectCompareRow row : aspectCompare) {
+            if (n >= 5) {
+                break;
             }
-            if (b - a > worseRivalDelta) {
-                worseRivalDelta = b - a;
-                worseRival = name;
+            if (row.getScores() == null || row.getScores().isEmpty()) {
+                continue;
             }
-        }
-        if (worseOwn != null && worseOwnDelta > 0) {
-            List<Evidence> rows = bySentiment(byAspect(own, worseOwn), "neg");
-            add(claims, ownName + " 在「" + worseOwn + "」上负向更多（" + ownNeg.get(worseOwn) + " 对 "
-                            + rivalNeg.getOrDefault(worseOwn, 0L) + "），改品应优先这里。",
-                    ids(first(rows, 3), allowed));
-        }
-        if (worseRival != null && worseRivalDelta > 0 && !Objects.equals(worseRival, worseOwn)) {
-            List<Evidence> rows = bySentiment(byAspect(rivalEv, worseRival), "neg");
-            add(claims, rivalName + " 在「" + worseRival + "」上负向更多，可作对照卖点，仍要核对本型号原评。",
-                    ids(first(rows, 3), allowed));
+            ReportView.AspectScore worst = null;
+            ReportView.AspectScore best = null;
+            for (ReportView.AspectScore score : row.getScores()) {
+                if (worst == null || score.getNeg() > worst.getNeg()) {
+                    worst = score;
+                }
+                if (best == null || score.getNeg() < best.getNeg()) {
+                    best = score;
+                }
+            }
+            if (worst == null || worst.getNeg() <= 0 || best == null || worst.getNeg() <= best.getNeg()) {
+                continue;
+            }
+            List<Evidence> source = bySentiment(byAspect(byParty.get(worst.getName()), row.getAspect()), "neg");
+            if (source.isEmpty()) {
+                continue;
+            }
+            StringBuilder bits = new StringBuilder();
+            for (ReportView.AspectScore score : row.getScores()) {
+                if (bits.length() > 0) {
+                    bits.append("，");
+                }
+                bits.append(score.getName()).append("负向 ").append(score.getNeg()).append(" 条");
+            }
+            String quote = "「" + quoteOf(source.get(0)) + "」";
+            if (ownName.equals(worst.getName())) {
+                add(claims, "「" + row.getAspect() + "」" + bits + "。本型号更集中：" + quote + "。",
+                        ids(first(source, 3), allowed));
+            } else {
+                add(claims, "「" + row.getAspect() + "」" + bits + "。「" + worst.getName() + "」更集中，可作对照卖点：" + quote + "。",
+                        ids(first(source, 3), allowed));
+            }
+            n++;
         }
     }
 
@@ -451,7 +476,23 @@ public class ReportComposer {
     }
 
     private static ReportView.Section section(String code, String title, List<ReportView.Claim> claims, List<ReportView.CompareRow> compare) {
-        return ReportView.Section.builder().code(code).title(title).claims(claims).compare(compare).build();
+        return section(code, title, claims, compare, null);
+    }
+
+    private static ReportView.Section section(
+            String code,
+            String title,
+            List<ReportView.Claim> claims,
+            List<ReportView.CompareRow> compare,
+            List<ReportView.AspectCompareRow> aspectCompare
+    ) {
+        return ReportView.Section.builder()
+                .code(code)
+                .title(title)
+                .claims(claims)
+                .compare(compare)
+                .aspectCompare(aspectCompare)
+                .build();
     }
 
     private static void add(List<ReportView.Claim> claims, String text, List<Long> evidenceIds) {
