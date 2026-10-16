@@ -20,6 +20,19 @@ class CleanRulesTest(unittest.TestCase):
         self.assertEqual(2, result["stats"]["kept"])
         self.assertEqual(1, result["stats"]["duplicate"])
 
+    def test_dedup_across_batches(self):
+        first = clean_reviews(
+            [{"id": 1, "platform": "jd", "content": "外观简约，和墙面挺搭"}]
+        )
+        second = clean_reviews(
+            [{"id": 2, "platform": "jd", "content": "外观简约，和墙面挺搭"}],
+            seen_keys=first["seenKeys"],
+        )
+        self.assertTrue(first["items"][0]["counted"])
+        self.assertFalse(second["items"][0]["counted"])
+        self.assertIn("duplicate", second["items"][0]["tags"])
+        self.assertEqual(1, second["stats"]["duplicate"])
+
     def test_mask_phone_not_echoed(self):
         result = clean_reviews(
             [{"id": 1, "platform": "jd", "content": "安装师傅联系我 13800138000 就可以"}]

@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @Service
 public class ReviewIndexService {
@@ -47,6 +48,10 @@ public class ReviewIndexService {
     }
 
     public String indexProject(Long jobId, Long projectId) {
+        return indexProject(jobId, projectId, null);
+    }
+
+    public String indexProject(Long jobId, Long projectId, Consumer<String> progress) {
         List<Review> reviews = reviewMapper.selectList(
                 new LambdaQueryWrapper<Review>()
                         .eq(Review::getProjectId, projectId)
@@ -72,6 +77,7 @@ public class ReviewIndexService {
         if (payload.isEmpty()) {
             return "已可按方面查看原评";
         }
+        notifyProgress(progress, "正在建立检索（已完成 0 / " + payload.size() + "）");
         Map<Long, List<String>> aspectMap = new HashMap<>();
         for (ReviewAspect row : reviewAspectMapper.selectList(
                 new LambdaQueryWrapper<ReviewAspect>().eq(ReviewAspect::getProjectId, projectId)
@@ -92,6 +98,7 @@ public class ReviewIndexService {
                 dim = 0;
                 lastResult = null;
                 for (int from = 0; from < payload.size(); from += 16) {
+                    notifyProgress(progress, "正在建立检索（已完成 " + from + " / " + payload.size() + "）");
                     List<Map<String, Object>> chunk = payload.subList(from, Math.min(from + 16, payload.size()));
                     Map<String, Object> result = workerClient.embed(jobId, projectId, new ArrayList<>(chunk), spec);
                     lastResult = result;
@@ -117,6 +124,7 @@ public class ReviewIndexService {
                     dim = chunkDim;
                 }
                 used = spec;
+                notifyProgress(progress, "正在建立检索（已完成 " + payload.size() + " / " + payload.size() + "）");
                 llmUsageService.record(jobId, projectId, spec, lastResult, true, "ok");
                 break;
             } catch (Exception e) {
@@ -139,6 +147,12 @@ public class ReviewIndexService {
             return "已可按方面查看原评（向量库暂不可用，暂用关键词）";
         }
         return "已可按方面查看原评，向量已写入";
+    }
+
+    private static void notifyProgress(Consumer<String> progress, String message) {
+        if (progress != null && message != null) {
+            progress.accept(message);
+        }
     }
 
     private static String indexError(Exception e) {

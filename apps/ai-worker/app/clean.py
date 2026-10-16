@@ -99,7 +99,11 @@ def normalize_key(platform: str, content: str) -> str:
     return "%s|%s" % (platform or "", CORE_RE.sub("", content or ""))
 
 
-def clean_reviews(reviews: list[dict[str, Any]], aspects: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def clean_reviews(
+    reviews: list[dict[str, Any]],
+    aspects: list[dict[str, Any]] | None = None,
+    seen_keys: list[str] | None = None,
+) -> dict[str, Any]:
     dicts = aspects or []
     prepared: list[dict[str, Any]] = []
     for row in reviews:
@@ -127,7 +131,7 @@ def clean_reviews(reviews: list[dict[str, Any]], aspects: list[dict[str, Any]] |
         )
 
     prepared.sort(key=lambda r: (r["id"] is None, r["id"] if isinstance(r["id"], int) else str(r["id"])))
-    seen: set[str] = set()
+    seen: set[str] = {str(key) for key in (seen_keys or []) if str(key or "").strip()}
     for row in prepared:
         key = normalize_key(row["platform"], row["content"])
         if key in seen:
@@ -174,4 +178,10 @@ def clean_reviews(reviews: list[dict[str, Any]], aspects: list[dict[str, Any]] |
         stats["template"],
         stats["masked"],
     )
-    return {"items": items, "stats": stats, "message": message, "cleaned": stats["total"]}
+    return {
+        "items": items,
+        "stats": stats,
+        "message": message,
+        "cleaned": stats["total"],
+        "seenKeys": list(seen),
+    }

@@ -151,6 +151,8 @@ export function importRemark(row: { successRows?: number; failRows?: number; sta
 export function pipelineRemark(message?: string | null) {
   const raw = String(message || '').trim()
   if (!raw) return '—'
+  const step = raw.match(/第 (\d+) \/ (\d+) 步/)
+  if (step) return `第 ${step[1]} / ${step[2]} 步`
   const progress = raw.match(/已完成 (\d+) \/ (\d+)/)
   if (progress) return `已完成 ${progress[1]} / ${progress[2]} 条`
   const analyzed = raw.match(/分析完成：(\d+) 条，方面 (\d+) 条(?:（([^）]*)）)?/)

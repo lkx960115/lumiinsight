@@ -37,7 +37,8 @@ public class WorkerClient {
             Long jobId,
             Long projectId,
             List<Map<String, Object>> reviews,
-            List<Map<String, Object>> aspects
+            List<Map<String, Object>> aspects,
+            List<String> seenKeys
     ) {
         Map<String, Object> body = new HashMap<>();
         body.put("jobId", jobId);
@@ -45,6 +46,7 @@ public class WorkerClient {
         body.put("stage", "CLEAN");
         body.put("reviews", reviews);
         body.put("aspects", aspects);
+        body.put("seenKeys", seenKeys == null ? List.of() : seenKeys);
         return restClient.post()
                 .uri("/v1/jobs/clean")
                 .contentType(MediaType.APPLICATION_JSON)

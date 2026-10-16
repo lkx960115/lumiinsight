@@ -124,7 +124,8 @@ class WorkerHandler(BaseHTTPRequestHandler):
             aspects = []
         if path == "/v1/jobs/clean":
             sys.stderr.write("clean reviews=%s\n" % len(reviews))
-            result = clean_reviews(reviews, aspects)
+            prior = data.get("seenKeys") if isinstance(data.get("seenKeys"), list) else []
+            result = clean_reviews(reviews, aspects, [str(key) for key in prior if key is not None])
             self._send(
                 200,
                 {
@@ -134,6 +135,7 @@ class WorkerHandler(BaseHTTPRequestHandler):
                     "projectId": data.get("projectId"),
                     "cleaned": result["cleaned"],
                     "stats": result["stats"],
+                    "seenKeys": result.get("seenKeys") or [],
                     "items": result["items"],
                 },
             )

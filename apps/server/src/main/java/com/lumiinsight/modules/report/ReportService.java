@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -75,14 +76,18 @@ public class ReportService {
     public ReportView generateForProject(Long projectId) {
         projectService.requireVisible(projectId);
         Long userId = SecurityUtils.requireUser().getUserId();
-        ReportView view = persist(projectId, userId);
+        ReportView view = persist(projectId, userId, null);
         auditService.record("report.generate", "report", view.getTitle());
         return view;
     }
 
     public String generateAfterAnalyze(Long projectId, Long userId) {
+        return generateAfterAnalyze(projectId, userId, null);
+    }
+
+    public String generateAfterAnalyze(Long projectId, Long userId, Consumer<String> progress) {
         try {
-            persist(projectId, userId == null ? 0L : userId);
+            persist(projectId, userId == null ? 0L : userId, progress);
             return "已生成报告";
         } catch (BizException e) {
             return e.getMessage();
@@ -138,7 +143,8 @@ public class ReportService {
         return file;
     }
 
-    private ReportView persist(Long projectId, Long userId) {
+    private ReportView persist(Long projectId, Long userId, Consumer<String> progress) {
+        notifyProgress(progress, "正在生成报告（第 1 / 3 步）");
         Project project = projectMapper.selectById(projectId);
         if (project == null) {
             throw BizException.of("NOT_FOUND", "项目不存在");
@@ -153,11 +159,13 @@ public class ReportService {
                         .eq(Review::getCounted, 1)
         );
         ProjectOverview overview = reviewQueryService.overviewUnchecked(projectId);
+        notifyProgress(progress, "正在生成报告（第 2 / 3 步）");
         List<ReportView.Section> sections = reportComposer.compose(project, overview, evidence, countedReviews);
         sections = keepOnlyProven(sections, evidence);
         if (sections.isEmpty()) {
             throw BizException.of("NO_EVIDENCE", "结论没有可用原评，不能生成报告。");
         }
+        notifyProgress(progress, "正在生成报告（第 3 / 3 步）");
         Report row = new Report();
         row.setProjectId(projectId);
         row.setTitle(project.getName() + " 口碑报告");
@@ -168,6 +176,12 @@ public class ReportService {
         row.setCreatedBy(userId);
         reportMapper.insert(row);
         return toDetail(row);
+    }
+
+    private static void notifyProgress(Consumer<String> progress, String message) {
+        if (progress != null && message != null) {
+            progress.accept(message);
+        }
     }
 
     private List<ReportView.Section> keepOnlyProven(List<ReportView.Section> sections, List<Evidence> evidence) {

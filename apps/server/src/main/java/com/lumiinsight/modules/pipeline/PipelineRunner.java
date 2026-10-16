@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,11 +113,41 @@ public class PipelineRunner {
                 row.put("content", review.getContent());
                 payload.add(row);
             }
-            log.info("清洗送出评论 {} 条 jobId={} projectId={}", payload.size(), job.getId(), job.getProjectId());
-            Map<String, Object> result = workerClient.clean(job.getId(), job.getProjectId(), payload, aspectPayload());
-            applyCleanResult(job.getProjectId(), result);
-            Object msg = result == null ? null : result.get("message");
-            String text = msg == null ? "清洗完成" : String.valueOf(msg);
+            payload.sort(Comparator.comparingLong(PipelineRunner::rowId));
+            int total = payload.size();
+            log.info("清洗送出评论 {} 条 jobId={} projectId={} 每批 {}", total, job.getId(), job.getProjectId(), PIPELINE_BATCH);
+            String text;
+            if (total == 0) {
+                text = "清洗完成：有效 0/0，去重 0，广告 0，过短 0";
+            } else {
+                List<Map<String, Object>> aspects = aspectPayload();
+                List<String> seenKeys = new ArrayList<>();
+                int done = 0;
+                int kept = 0;
+                int duplicate = 0;
+                int ad = 0;
+                int shortCount = 0;
+                int template = 0;
+                int masked = 0;
+                for (int from = 0; from < total; from += PIPELINE_BATCH) {
+                    int to = Math.min(from + PIPELINE_BATCH, total);
+                    progress(job, "正在清洗评论（已完成 " + done + " / " + total + "）");
+                    Map<String, Object> result = workerClient.clean(
+                            job.getId(), job.getProjectId(), payload.subList(from, to), aspects, seenKeys
+                    );
+                    applyCleanResult(job.getProjectId(), result);
+                    kept += statOf(result, "kept");
+                    duplicate += statOf(result, "duplicate");
+                    ad += statOf(result, "ad");
+                    shortCount += statOf(result, "short");
+                    template += statOf(result, "template");
+                    masked += statOf(result, "masked");
+                    seenKeys = readSeenKeys(result);
+                    done = to;
+                }
+                text = "清洗完成：有效 " + kept + "/" + total + "，去重 " + duplicate
+                        + "，广告 " + ad + "，过短 " + shortCount + "，模板 " + template + "，脱敏 " + masked;
+            }
             if (markReady) {
                 job.setStatus(JobStatus.READY.name());
                 job.setMessage(text);
@@ -135,7 +166,7 @@ public class PipelineRunner {
         }
     }
 
-    private static final int ANALYZE_BATCH = 50;
+    private static final int PIPELINE_BATCH = 50;
 
     private void executeAnalyze(PipelineJob job) {
         job.setStatus(JobStatus.ANALYZING.name());
@@ -161,16 +192,15 @@ public class PipelineRunner {
             List<Map<String, Object>> aspects = aspectPayload();
             List<Map<String, Object>> specs = llmRuntimeService.workerSpecs("absa");
             int total = payload.size();
-            log.info("分析送出评论 {} 条 jobId={} 可用模型 {} 每批 {}", total, job.getId(), specs.size(), ANALYZE_BATCH);
+            log.info("分析送出评论 {} 条 jobId={} 可用模型 {} 每批 {}", total, job.getId(), specs.size(), PIPELINE_BATCH);
             int done = 0;
             int aspectCount = 0;
             boolean anyLlm = false;
             boolean loggedMiss = false;
             String modelExtra = "";
-            for (int from = 0; from < total; from += ANALYZE_BATCH) {
-                int to = Math.min(from + ANALYZE_BATCH, total);
-                job.setMessage("正在分析情感与方面（已完成 " + done + " / " + total + "）");
-                pipelineJobMapper.updateById(job);
+            for (int from = 0; from < total; from += PIPELINE_BATCH) {
+                int to = Math.min(from + PIPELINE_BATCH, total);
+                progress(job, "正在分析情感与方面（已完成 " + done + " / " + total + "）");
                 Map<String, Object> result = analyzeChunk(job, payload.subList(from, to), aspects, specs, loggedMiss);
                 if (result != null && Boolean.TRUE.equals(result.get("_loggedMiss"))) {
                     loggedMiss = true;
@@ -195,13 +225,11 @@ public class PipelineRunner {
                     : (specs.isEmpty() ? "词典规则（未配置模型 Key）" : "词典规则（模型未返回有效结果）");
             String analyzeMsg = "分析完成：" + done + " 条，方面 " + aspectCount + " 条（" + how + "）" + modelExtra;
             job.setStatus(JobStatus.INDEXING.name());
-            job.setMessage("正在建立检索，随后可按方面查看原评");
-            pipelineJobMapper.updateById(job);
-            String indexMsg = reviewIndexService.indexProject(job.getId(), job.getProjectId());
+            progress(job, "正在建立检索");
+            String indexMsg = reviewIndexService.indexProject(job.getId(), job.getProjectId(), msg -> progress(job, msg));
             job.setStatus(JobStatus.REPORTING.name());
-            job.setMessage("正在生成报告");
-            pipelineJobMapper.updateById(job);
-            String reportMsg = reportService.generateAfterAnalyze(job.getProjectId(), job.getCreatedBy());
+            progress(job, "正在生成报告（第 1 / 3 步）");
+            String reportMsg = reportService.generateAfterAnalyze(job.getProjectId(), job.getCreatedBy(), msg -> progress(job, msg));
             job.setStatus(JobStatus.READY.name());
             job.setMessage(analyzeMsg + "。" + indexMsg + "。" + reportMsg);
             pipelineJobMapper.updateById(job);
@@ -272,6 +300,46 @@ public class PipelineRunner {
         if (used != null) {
             String label = String.valueOf(used.getOrDefault("providerName", "")) + " · " + used.getOrDefault("model", "");
             out.put("_modelExtra", "backup".equals(String.valueOf(used.get("role"))) ? "；已切备用 " + label : "；" + label);
+        }
+        return out;
+    }
+
+    private void progress(PipelineJob job, String message) {
+        job.setMessage(message);
+        pipelineJobMapper.updateById(job);
+    }
+
+    private static long rowId(Map<String, Object> row) {
+        if (row == null || row.get("id") == null) {
+            return Long.MAX_VALUE;
+        }
+        try {
+            return Long.parseLong(String.valueOf(row.get("id")));
+        } catch (NumberFormatException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static int statOf(Map<String, Object> result, String key) {
+        if (result == null) {
+            return 0;
+        }
+        Object stats = result.get("stats");
+        if (!(stats instanceof Map<?, ?> map)) {
+            return 0;
+        }
+        return toInt(map.get(key));
+    }
+
+    private static List<String> readSeenKeys(Map<String, Object> result) {
+        List<String> out = new ArrayList<>();
+        if (result == null || !(result.get("seenKeys") instanceof List<?> list)) {
+            return out;
+        }
+        for (Object item : list) {
+            if (item != null && !String.valueOf(item).isBlank()) {
+                out.add(String.valueOf(item));
+            }
         }
         return out;
     }

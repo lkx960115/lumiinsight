@@ -288,7 +288,7 @@ const latestFailedNote = computed(() => {
 })
 const runningNote = computed(() => {
   const note = pipelineRemark(runningJob.value?.message)
-  if (note && /已完成/.test(note)) return note
+  if (note && /已完成|第 \d+ \/ \d+ 步/.test(note)) return note
   return ''
 })
 const reviewEmptyText = computed(() => {
