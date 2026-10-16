@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.absa import analyze_reviews
+from app.alert import write_alerts
 from app.ask import answer_question
 from app.clean import clean_reviews
 from app.llm import embed_texts
@@ -69,7 +70,7 @@ class WorkerHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
-        if path not in {"/v1/jobs/clean", "/v1/jobs/analyze", "/v1/jobs/embed", "/v1/jobs/ask"}:
+        if path not in {"/v1/jobs/clean", "/v1/jobs/analyze", "/v1/jobs/embed", "/v1/jobs/ask", "/v1/jobs/alert"}:
             self._send(404, {"code": "NOT_FOUND", "message": "not found"})
             return
         raw = read_http_body(self.headers, self.rfile)
@@ -94,6 +95,25 @@ class WorkerHandler(BaseHTTPRequestHandler):
                     "projectId": data.get("projectId"),
                     "answer": result.get("answer"),
                     "evidenceIds": result.get("evidenceIds") or [],
+                    "source": result.get("source") or "rule",
+                    "usage": result.get("usage") or {},
+                },
+            )
+            return
+        if path == "/v1/jobs/alert":
+            items = data.get("items") or []
+            if not isinstance(items, list):
+                items = []
+            llm = data.get("llm") if isinstance(data.get("llm"), dict) else None
+            result = write_alerts(items, llm)
+            self._send(
+                200,
+                {
+                    "code": "0",
+                    "message": "ok",
+                    "jobId": data.get("jobId"),
+                    "projectId": data.get("projectId"),
+                    "items": result.get("items") or [],
                     "source": result.get("source") or "rule",
                     "usage": result.get("usage") or {},
                 },

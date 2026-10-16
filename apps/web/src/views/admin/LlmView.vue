@@ -200,6 +200,7 @@ const PURPOSE: Record<string, { name: string; hint: string }> = {
   embedding: { name: '向量检索', hint: '按意思找原评，须配 embedding 模型' },
   spam_classify: { name: '去水辅助', hint: '可选；清洗仍以规则为主' },
   ask: { name: '问原评', hint: '只根据本项目原评回答，无依据不编' },
+  alert: { name: '预警说明', hint: '方面负向变多时，按原评写一句说明' },
 }
 
 const providers = ref<any[]>([])

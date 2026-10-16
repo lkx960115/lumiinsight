@@ -105,6 +105,29 @@ public class WorkerClient {
     }
 
     @SuppressWarnings("unchecked")
+    public Map<String, Object> alert(
+            Long projectId,
+            List<Map<String, Object>> items,
+            Map<String, Object> llm
+    ) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("projectId", projectId);
+        body.put("items", items == null ? List.of() : items);
+        body.put("llm", llm);
+        return restClient.post()
+                .uri("/v1/jobs/alert")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    String raw = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+                    throw new IllegalStateException(workerErrorMessage(raw, response.getStatusCode().value()));
+                })
+                .body(Map.class);
+    }
+
+    @SuppressWarnings("unchecked")
     public Map<String, Object> embed(
             Long jobId,
             Long projectId,

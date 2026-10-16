@@ -31,6 +31,20 @@
     </div>
 
     <el-card class="block">
+      <template #header>口碑预警</template>
+      <p class="muted">对照最近一个月和上一月。某方面负向突然变多会出现在这里，每条都能查看原评。没有评论时间时无法对照。</p>
+      <div v-loading="alertsLoading">
+        <p v-if="!alertsLoading && !alerts.length" class="muted">最近没有某方面负向突然变多。请先导入带时间的评论并完成清洗并分析。</p>
+        <div v-for="item in alerts" :key="item.aspect" class="report-claim">
+          <p>{{ item.summary }}</p>
+          <div class="row-actions">
+            <el-button v-if="item.evidences?.length" text @click="openAlert(item)">查看原评</el-button>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
+    <el-card class="block">
       <template #header>竞品</template>
       <p class="muted">名称要和评论里的商品名对得上。改完后重新生成报告，对照才会更新。</p>
       <p v-if="competitorNames.length">{{ competitorNames.join('、') }}</p>
@@ -200,6 +214,16 @@
       />
     </el-card>
 
+    <el-drawer v-model="alertDrawer" title="对应原评" size="480px">
+      <div v-if="alertEvidences.length" class="report-evidence-list">
+        <div v-for="item in alertEvidences" :key="item.id" class="report-evidence-item">
+          <p class="muted">{{ platformLabel(item.platform) }} · {{ formatDateTime(item.reviewTime) }} · {{ sentimentLabel(item.sentiment) }}{{ item.aspectName ? ' · ' + item.aspectName : '' }}</p>
+          <p class="report-quote">{{ item.content || item.quote || '—' }}</p>
+        </div>
+      </div>
+      <p v-else class="muted">对应原评已不存在。</p>
+    </el-drawer>
+
     <el-dialog v-model="editVisible" title="编辑项目" width="560px">
       <el-form label-width="90px">
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
@@ -232,7 +256,7 @@ import { ElMessage } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import http from '@/api/http'
 import OverviewCharts from './OverviewCharts.vue'
-import { formatClock, formatDateTime, friendlyMessage, importRemark, isRunningStatus, jobStatusLabel, jobTypeLabel, pipelineRemark, platformLabel } from '@/utils/labels'
+import { formatClock, formatDateTime, friendlyMessage, importRemark, isRunningStatus, jobStatusLabel, jobTypeLabel, pipelineRemark, platformLabel, sentimentLabel } from '@/utils/labels'
 
 const route = useRoute()
 const router = useRouter()
@@ -253,6 +277,10 @@ const reportBusy = ref(false)
 const submitting = ref(false)
 const watchingJobId = ref<number | null>(null)
 const latestReport = ref<any>(null)
+const alerts = ref<any[]>([])
+const alertsLoading = ref(false)
+const alertDrawer = ref(false)
+const alertEvidences = ref<any[]>([])
 const editVisible = ref(false)
 const competitorsText = ref('')
 const keywordsText = ref('')
@@ -357,6 +385,24 @@ async function load() {
   const { data } = await http.get(`/projects/${id}`)
   project.value = data.data
   await Promise.all([loadJobs(), loadPipeline(), loadReviews(), loadOverview(), loadLatestReport()])
+  loadAlerts()
+}
+
+async function loadAlerts() {
+  alertsLoading.value = true
+  try {
+    const { data } = await http.get(`/projects/${id}/alerts`, { timeout: 120000, silent: true } as any)
+    alerts.value = data.data || []
+  } catch {
+    alerts.value = []
+  } finally {
+    alertsLoading.value = false
+  }
+}
+
+function openAlert(item: { evidences?: any[] }) {
+  alertEvidences.value = item.evidences || []
+  alertDrawer.value = true
 }
 
 async function loadOverview() {
@@ -557,11 +603,6 @@ function aspectDisplay(row: any): { name: string; sentiment?: string }[] {
     return row.aspects
   }
   return aspectList(row).map((name) => ({ name }))
-}
-
-function sentimentLabel(value: string) {
-  const map: Record<string, string> = { pos: '正向', neg: '负向', neu: '中性' }
-  return map[value] || '—'
 }
 
 function sentimentType(value: string) {

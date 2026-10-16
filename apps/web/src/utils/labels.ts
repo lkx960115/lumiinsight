@@ -58,6 +58,7 @@ export function purposeLabel(code?: string | null) {
     embedding: '向量检索',
     spam_classify: '去水辅助',
     ask: '问原评',
+    alert: '预警说明',
   }
   if (!code) return ''
   return map[code] || code
