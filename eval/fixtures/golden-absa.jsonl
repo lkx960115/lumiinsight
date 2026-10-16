@@ -16,3 +16,16 @@
 {"id": "remote-neg", "content": "亮度够，就是遥控器难配对", "aspects": [{"name": "遥控", "sentiment": "neg"}]}
 {"id": "smart-neg", "content": "智能联动经常掉线，不如演示那款稳", "aspects": [{"name": "智能联动", "sentiment": "neg"}]}
 {"id": "bright-pos", "content": "亮度够用，客厅晚上很舒服", "aspects": [{"name": "亮度", "sentiment": "pos"}]}
+{"id": "bright-pos-bright", "content": "够亮，客厅晚上能看书", "aspects": [{"name": "亮度", "sentiment": "pos"}]}
+{"id": "bright-neg-dark", "content": "灯光太暗，客厅显得压抑", "aspects": [{"name": "亮度", "sentiment": "neg"}]}
+{"id": "bright-neg-dim", "content": "亮度暗了，晚上要再开台灯", "aspects": [{"name": "亮度", "sentiment": "neg"}]}
+{"id": "bright-neg-competitor", "content": "这款亮度太暗，不如演示吸顶灯", "aspects": [{"name": "亮度", "sentiment": "neg"}]}
+{"id": "look-pos-face", "content": "颜值在线，造型好看", "aspects": [{"name": "外观", "sentiment": "pos"}]}
+{"id": "look-neg-cheap", "content": "外观难看，廉价感很重", "aspects": [{"name": "外观", "sentiment": "neg"}]}
+{"id": "look-neg-ugly", "content": "外观有点丑，不如演示那款耐看", "aspects": [{"name": "外观", "sentiment": "neg"}]}
+{"id": "price-pos", "content": "价格实惠，性价比高", "aspects": [{"name": "价格", "sentiment": "pos"}]}
+{"id": "price-neg", "content": "价格太贵，不值这个钱", "aspects": [{"name": "价格", "sentiment": "neg"}]}
+{"id": "price-neg-competitor", "content": "比演示那款贵不少", "aspects": [{"name": "价格", "sentiment": "neg"}]}
+{"id": "log-pos", "content": "物流很快，隔天就到了", "aspects": [{"name": "物流", "sentiment": "pos"}]}
+{"id": "log-neg-slow", "content": "物流太慢，一直不更新", "aspects": [{"name": "物流", "sentiment": "neg"}]}
+{"id": "log-neg-damage", "content": "物流破损，外箱都凹了", "aspects": [{"name": "物流", "sentiment": "neg"}]}
