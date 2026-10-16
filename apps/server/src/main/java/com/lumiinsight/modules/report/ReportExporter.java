@@ -9,6 +9,7 @@ import com.lumiinsight.modules.report.dto.ReportAspectCompareExportRow;
 import com.lumiinsight.modules.report.dto.ReportCiteExportRow;
 import com.lumiinsight.modules.report.dto.ReportClaimExportRow;
 import com.lumiinsight.modules.report.dto.ReportCompareExportRow;
+import com.lumiinsight.modules.report.dto.ReportMonthCompareExportRow;
 import com.lumiinsight.modules.report.dto.ReportView;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -73,6 +74,7 @@ public class ReportExporter {
                 writer.write(claims, claimSheet);
                 List<ReportCompareExportRow> compare = compareRows(report);
                 List<ReportAspectCompareExportRow> aspects = aspectCompareRows(report);
+                List<ReportMonthCompareExportRow> months = monthCompareRows(report);
                 int sheet = 1;
                 if (!compare.isEmpty()) {
                     WriteSheet compareSheet = EasyExcel.writerSheet(sheet++, "对照").head(ReportCompareExportRow.class).build();
@@ -81,6 +83,10 @@ public class ReportExporter {
                 if (!aspects.isEmpty()) {
                     WriteSheet aspectSheet = EasyExcel.writerSheet(sheet++, "方面对照").head(ReportAspectCompareExportRow.class).build();
                     writer.write(aspects, aspectSheet);
+                }
+                if (!months.isEmpty()) {
+                    WriteSheet monthSheet = EasyExcel.writerSheet(sheet++, "按月对照").head(ReportMonthCompareExportRow.class).build();
+                    writer.write(months, monthSheet);
                 }
                 WriteSheet citeSheet = EasyExcel.writerSheet(sheet, "引用").head(ReportCiteExportRow.class).build();
                 writer.write(cites, citeSheet);
@@ -167,6 +173,7 @@ public class ReportExporter {
         }
         md.append("\n");
         appendAspectCompareMarkdown(md, section);
+        appendMonthCompareMarkdown(md, section);
     }
 
     private static void appendAspectCompareMarkdown(StringBuilder md, ReportView.Section section) {
@@ -206,6 +213,68 @@ public class ReportExporter {
         md.append("\n");
     }
 
+    private static void appendMonthCompareMarkdown(StringBuilder md, ReportView.Section section) {
+        if (section.getMonthCompare() == null || section.getMonthCompare().isEmpty()) {
+            return;
+        }
+        List<String> names = new ArrayList<>();
+        if (section.getMonthCompare().get(0).getScores() != null) {
+            for (ReportView.MonthScore score : section.getMonthCompare().get(0).getScores()) {
+                names.add(score.getName());
+            }
+        }
+        if (names.isEmpty()) {
+            return;
+        }
+        md.append("| 月份");
+        for (String name : names) {
+            md.append(" | ").append(nullToEmpty(name));
+        }
+        md.append(" |\n| ---");
+        for (int i = 0; i < names.size(); i++) {
+            md.append(" | ---");
+        }
+        md.append(" |\n");
+        for (ReportView.MonthCompareRow row : section.getMonthCompare()) {
+            md.append("| ").append(monthLabel(row.getMonth()));
+            for (String name : names) {
+                ReportView.MonthScore score = monthScoreOf(row, name);
+                if (score == null || score.getVolume() <= 0) {
+                    md.append(" | —");
+                } else {
+                    md.append(" | 原评 ").append(score.getVolume())
+                            .append("，正向 ").append(score.getPos())
+                            .append("，负向 ").append(score.getNeg());
+                }
+            }
+            md.append(" |\n");
+        }
+        md.append("\n");
+    }
+
+    private static String monthLabel(String raw) {
+        if (raw == null || raw.length() < 7) {
+            return raw == null ? "—" : raw;
+        }
+        try {
+            return Integer.parseInt(raw.substring(0, 4)) + "年" + Integer.parseInt(raw.substring(5, 7)) + "月";
+        } catch (Exception e) {
+            return raw;
+        }
+    }
+
+    private static ReportView.MonthScore monthScoreOf(ReportView.MonthCompareRow row, String name) {
+        if (row.getScores() == null) {
+            return null;
+        }
+        for (ReportView.MonthScore score : row.getScores()) {
+            if (name.equals(score.getName())) {
+                return score;
+            }
+        }
+        return null;
+    }
+
     private static ReportView.AspectScore scoreOf(ReportView.AspectCompareRow row, String name) {
         if (row.getScores() == null) {
             return null;
@@ -236,6 +305,33 @@ public class ReportExporter {
                         row.getNeu(),
                         StringUtils.hasText(row.getTopPain()) ? row.getTopPain() : "—"
                 ));
+            }
+        }
+        return rows;
+    }
+
+    private static List<ReportMonthCompareExportRow> monthCompareRows(ReportView report) {
+        List<ReportMonthCompareExportRow> rows = new ArrayList<>();
+        if (report.getSections() == null) {
+            return rows;
+        }
+        for (ReportView.Section section : report.getSections()) {
+            if (section.getMonthCompare() == null) {
+                continue;
+            }
+            for (ReportView.MonthCompareRow row : section.getMonthCompare()) {
+                if (row.getScores() == null) {
+                    continue;
+                }
+                for (ReportView.MonthScore score : row.getScores()) {
+                    rows.add(new ReportMonthCompareExportRow(
+                            monthLabel(row.getMonth()),
+                            score.getName(),
+                            score.getVolume(),
+                            score.getPos(),
+                            score.getNeg()
+                    ));
+                }
             }
         }
         return rows;

@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 @Component
@@ -302,16 +303,18 @@ public class ReportComposer {
             byParty.put(rival, rows);
         }
         List<ReportView.AspectCompareRow> aspectCompare = aspectCompareOf(byParty);
+        List<ReportView.MonthCompareRow> monthCompare = monthCompareOf(byParty, byReview);
         add(claims, ownName + " 原评 " + ownCounts.volume + " 条（正向 " + ownCounts.pos + "、负向 " + ownCounts.neg
                         + "），已对照 " + present.size() + " 个竞品：" + String.join("、", present) + "。",
                 ids(first(all(own, byRival.get(present.get(0))), 3), allowed));
         addPainClaim(claims, ownName, own, allowed);
         addAspectCompareClaims(claims, ownName, aspectCompare, byParty, allowed);
+        addCompeteTrendClaims(claims, ownName, byParty, byReview, allowed);
         if (!missing.isEmpty()) {
             add(claims, "已填写竞品「" + String.join("、", missing) + "」，但评论商品名里还没有对应条目。请导入竞品评论后再生成。",
                     ids(first(own.isEmpty() ? evidence : own, 3), allowed));
         }
-        return section("compete", "竞品对照", claims, compare, aspectCompare);
+        return section("compete", "竞品对照", claims, compare, aspectCompare, monthCompare);
     }
 
     private static void addPainClaim(List<ReportView.Claim> claims, String name, List<Evidence> rows, Set<Long> allowed) {
@@ -406,6 +409,180 @@ public class ReportComposer {
         }
     }
 
+    private static List<ReportView.MonthCompareRow> monthCompareOf(
+            Map<String, List<Evidence>> byParty,
+            Map<Long, Review> byReview
+    ) {
+        TreeSet<String> months = new TreeSet<>();
+        Map<String, Map<String, Counts>> grid = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Evidence>> party : byParty.entrySet()) {
+            Map<String, List<Evidence>> byMonth = new TreeMap<>();
+            for (Evidence row : party.getValue()) {
+                String key = monthKey(byReview.get(row.getReviewId()));
+                if (key == null) {
+                    continue;
+                }
+                months.add(key);
+                byMonth.computeIfAbsent(key, ignored -> new ArrayList<>()).add(row);
+            }
+            Map<String, Counts> counts = new LinkedHashMap<>();
+            for (Map.Entry<String, List<Evidence>> month : byMonth.entrySet()) {
+                counts.put(month.getKey(), countsOf(month.getValue(), byReview));
+            }
+            grid.put(party.getKey(), counts);
+        }
+        if (months.isEmpty()) {
+            return List.of();
+        }
+        List<ReportView.MonthCompareRow> out = new ArrayList<>();
+        for (String month : months) {
+            List<ReportView.MonthScore> scores = new ArrayList<>();
+            for (String name : byParty.keySet()) {
+                Counts counts = grid.getOrDefault(name, Map.of()).get(month);
+                if (counts == null) {
+                    counts = new Counts(0, 0, 0, 0);
+                }
+                scores.add(ReportView.MonthScore.builder()
+                        .name(name)
+                        .volume(counts.volume)
+                        .pos(counts.pos)
+                        .neg(counts.neg)
+                        .build());
+            }
+            out.add(ReportView.MonthCompareRow.builder().month(month).scores(scores).build());
+        }
+        return out;
+    }
+
+    private void addCompeteTrendClaims(
+            List<ReportView.Claim> claims,
+            String ownName,
+            Map<String, List<Evidence>> byParty,
+            Map<Long, Review> byReview,
+            Set<Long> allowed
+    ) {
+        int n = 0;
+        for (Map.Entry<String, List<Evidence>> party : byParty.entrySet()) {
+            if (n >= 4) {
+                break;
+            }
+            TreeMap<String, Counts> months = monthsOf(party.getValue(), byReview);
+            if (months.size() < 2) {
+                continue;
+            }
+            String first = months.firstKey();
+            String last = months.lastKey();
+            Counts earlier = months.get(first);
+            Counts later = months.get(last);
+            if (earlier.volume < 2 || later.volume < 2) {
+                continue;
+            }
+            long firstPct = Math.round(earlier.neg * 100.0 / earlier.volume);
+            long lastPct = Math.round(later.neg * 100.0 / later.volume);
+            if (firstPct == lastPct) {
+                continue;
+            }
+            boolean worse = lastPct > firstPct;
+            List<Evidence> proof = inMonth(bySentiment(party.getValue(), "neg"), byReview, worse ? last : first);
+            if (proof.isEmpty()) {
+                proof = inMonth(party.getValue(), byReview, last);
+            }
+            if (proof.isEmpty()) {
+                continue;
+            }
+            add(claims, party.getKey() + " 负向占比从 " + monthLabel(first) + " 的 " + firstPct + "% "
+                            + (worse ? "升到" : "降到") + " " + monthLabel(last) + " 的 " + lastPct + "%，"
+                            + (worse ? "在变差。" : "有好转。")
+                            + "「" + quoteOf(proof.get(0)) + "」。",
+                    ids(first(proof, 3), allowed));
+            n++;
+        }
+        addLatestMonthWhoWorse(claims, ownName, byParty, byReview, allowed);
+    }
+
+    private void addLatestMonthWhoWorse(
+            List<ReportView.Claim> claims,
+            String ownName,
+            Map<String, List<Evidence>> byParty,
+            Map<Long, Review> byReview,
+            Set<Long> allowed
+    ) {
+        Map<String, TreeMap<String, Counts>> grid = new LinkedHashMap<>();
+        TreeSet<String> months = new TreeSet<>();
+        for (Map.Entry<String, List<Evidence>> party : byParty.entrySet()) {
+            TreeMap<String, Counts> byMonth = monthsOf(party.getValue(), byReview);
+            grid.put(party.getKey(), byMonth);
+            months.addAll(byMonth.keySet());
+        }
+        String picked = null;
+        for (String month : months.descendingSet()) {
+            int ready = 0;
+            for (TreeMap<String, Counts> byMonth : grid.values()) {
+                Counts counts = byMonth.get(month);
+                if (counts != null && counts.volume >= 2) {
+                    ready++;
+                }
+            }
+            if (ready >= 2) {
+                picked = month;
+                break;
+            }
+        }
+        if (picked == null) {
+            return;
+        }
+        String worst = null;
+        String best = null;
+        long worstPct = -1;
+        long bestPct = 101;
+        Counts worstCounts = null;
+        for (Map.Entry<String, TreeMap<String, Counts>> party : grid.entrySet()) {
+            Counts counts = party.getValue().get(picked);
+            if (counts == null || counts.volume < 2) {
+                continue;
+            }
+            long pct = Math.round(counts.neg * 100.0 / counts.volume);
+            if (pct > worstPct) {
+                worstPct = pct;
+                worst = party.getKey();
+                worstCounts = counts;
+            }
+            if (pct < bestPct) {
+                bestPct = pct;
+                best = party.getKey();
+            }
+        }
+        if (worst == null || best == null || worst.equals(best) || worstPct <= bestPct || worstCounts == null) {
+            return;
+        }
+        List<Evidence> proof = inMonth(bySentiment(byParty.get(worst), "neg"), byReview, picked);
+        if (proof.isEmpty()) {
+            return;
+        }
+        String how = ownName.equals(worst)
+                ? "本型号近月负向更集中，要先看原评。"
+                : "「" + worst + "」近月负向更集中，可作对照卖点。";
+        add(claims, monthLabel(picked) + "「" + worst + "」负向占比 " + worstPct + "%，「"
+                        + best + "」" + bestPct + "%。" + how + "「" + quoteOf(proof.get(0)) + "」。",
+                ids(first(proof, 3), allowed));
+    }
+
+    private static TreeMap<String, Counts> monthsOf(List<Evidence> rows, Map<Long, Review> byReview) {
+        Map<String, List<Evidence>> byMonth = new TreeMap<>();
+        for (Evidence row : rows) {
+            String key = monthKey(byReview.get(row.getReviewId()));
+            if (key == null) {
+                continue;
+            }
+            byMonth.computeIfAbsent(key, ignored -> new ArrayList<>()).add(row);
+        }
+        TreeMap<String, Counts> out = new TreeMap<>();
+        for (Map.Entry<String, List<Evidence>> month : byMonth.entrySet()) {
+            out.put(month.getKey(), countsOf(month.getValue(), byReview));
+        }
+        return out;
+    }
+
     private List<String> readNames(String json) {
         if (!StringUtils.hasText(json)) {
             return List.of();
@@ -486,12 +663,24 @@ public class ReportComposer {
             List<ReportView.CompareRow> compare,
             List<ReportView.AspectCompareRow> aspectCompare
     ) {
+        return section(code, title, claims, compare, aspectCompare, null);
+    }
+
+    private static ReportView.Section section(
+            String code,
+            String title,
+            List<ReportView.Claim> claims,
+            List<ReportView.CompareRow> compare,
+            List<ReportView.AspectCompareRow> aspectCompare,
+            List<ReportView.MonthCompareRow> monthCompare
+    ) {
         return ReportView.Section.builder()
                 .code(code)
                 .title(title)
                 .claims(claims)
                 .compare(compare)
                 .aspectCompare(aspectCompare)
+                .monthCompare(monthCompare)
                 .build();
     }
 

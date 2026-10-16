@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>报告</h2>
-        <p class="muted">看单品结论、原声和竞品对照。每条结论都能点回原评，没有证据的句子不会出现。</p>
+        <p class="muted">看单品结论、原声和竞品对照。竞品可按月看谁在变差。每条结论都能点回原评，没有证据的句子不会出现。</p>
       </div>
     </div>
     <div class="panel">

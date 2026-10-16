@@ -226,6 +226,7 @@
 | 任务状态 | `jobStatusLabel` |
 | 系统时间 | `formatClock` |
 | 评论原文时间 | `formatDateTime` |
+| 按月对照 | `formatMonth` |
 | 失败/接口说明 | `friendlyMessage` |
 | 导入结果 | `importRemark` |
 | 分析/清洗结果 | `pipelineRemark` |

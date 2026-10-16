@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>{{ report.title }}</h2>
-        <p class="muted">{{ report.brand }} {{ report.mainModel }} · 每条结论都绑定了原评。竞品可并排看声量，并按方面对照；点「查看原评」核原文。</p>
+        <p class="muted">{{ report.brand }} {{ report.mainModel }} · 每条结论都绑定了原评。竞品可并排看声量、方面和按月走势；点「查看原评」核原文。</p>
       </div>
       <div class="page-actions">
         <el-button type="primary" @click="exportVisible = true">导出</el-button>
@@ -45,7 +45,7 @@
 
     <el-card v-for="section in sections" :key="section.code" class="block">
       <template #header>{{ section.title }}</template>
-      <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。每个竞品单独一行，没有对应原评的不进表。下面按方面看谁负向更集中，每句都能查看原评。</p>
+      <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。每个竞品单独一行，没有对应原评的不进表。下面按方面看谁负向更集中，再按月看谁在变差。每句都能查看原评。改完竞品后请重新生成报告。</p>
       <el-table v-if="section.compare && section.compare.length" :data="section.compare" class="mt" empty-text="还没有对照数据。">
         <el-table-column label="对象" min-width="140">
           <template #default="{ row }">{{ row.name }}</template>
@@ -82,6 +82,24 @@
           min-width="140"
         >
           <template #default="{ row }">{{ aspectCell(row, product) }}</template>
+        </el-table-column>
+      </el-table>
+      <el-table
+        v-if="section.monthCompare && section.monthCompare.length"
+        :data="section.monthCompare"
+        class="mt"
+        empty-text="还没有带时间的对照原评。"
+      >
+        <el-table-column label="月份" min-width="120">
+          <template #default="{ row }">{{ formatMonth(row.month) }}</template>
+        </el-table-column>
+        <el-table-column
+          v-for="product in monthProducts(section)"
+          :key="product"
+          :label="product"
+          min-width="160"
+        >
+          <template #default="{ row }">{{ monthCell(row, product) }}</template>
         </el-table-column>
       </el-table>
       <div v-for="(claim, idx) in section.claims || []" :key="idx" class="report-claim">
@@ -128,7 +146,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '@/api/http'
-import { formatDateTime, platformLabel, sentimentLabel } from '@/utils/labels'
+import { formatDateTime, formatMonth, platformLabel, sentimentLabel } from '@/utils/labels'
 
 const route = useRoute()
 const router = useRouter()
@@ -163,6 +181,22 @@ function aspectCell(row: { scores?: { name?: string; pos?: number; neg?: number 
   const neg = Number(score.neg) || 0
   if (pos === 0 && neg === 0) return '—'
   return `正向 ${pos}，负向 ${neg}`
+}
+
+function monthProducts(section: { monthCompare?: { scores?: { name?: string }[] }[] }) {
+  const first = section.monthCompare?.[0]
+  return (first?.scores || []).map((score) => score.name || '').filter(Boolean)
+}
+
+function monthCell(
+  row: { scores?: { name?: string; volume?: number; pos?: number; neg?: number }[] },
+  product: string,
+) {
+  const score = (row.scores || []).find((item) => item.name === product)
+  if (!score) return '—'
+  const volume = Number(score.volume) || 0
+  if (volume <= 0) return '—'
+  return `原评 ${volume}，正向 ${Number(score.pos) || 0}，负向 ${Number(score.neg) || 0}`
 }
 
 async function load() {

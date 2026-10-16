@@ -208,6 +208,7 @@ public class ReportService {
                         .claims(claims)
                         .compare(section.getCompare())
                         .aspectCompare(section.getAspectCompare())
+                        .monthCompare(section.getMonthCompare())
                         .build());
             }
         }

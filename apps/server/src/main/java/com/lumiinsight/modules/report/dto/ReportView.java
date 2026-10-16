@@ -49,6 +49,7 @@ public class ReportView {
         private List<Claim> claims;
         private List<CompareRow> compare;
         private List<AspectCompareRow> aspectCompare;
+        private List<MonthCompareRow> monthCompare;
     }
 
     @Data
@@ -79,6 +80,26 @@ public class ReportView {
     @AllArgsConstructor
     public static class AspectScore {
         private String name;
+        private long pos;
+        private long neg;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MonthCompareRow {
+        private String month;
+        private List<MonthScore> scores;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MonthScore {
+        private String name;
+        private long volume;
         private long pos;
         private long neg;
     }

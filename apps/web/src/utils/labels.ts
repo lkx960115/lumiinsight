@@ -43,6 +43,13 @@ export function jobStatusLabel(status?: string | null) {
   return map[status || ''] || status || '—'
 }
 
+export function formatMonth(value?: string | null) {
+  const raw = String(value || '').trim()
+  const matched = raw.match(/^(\d{4})-(\d{2})$/)
+  if (!matched) return raw || '—'
+  return `${matched[1]}年${Number(matched[2])}月`
+}
+
 export function formatDateTime(value?: string | null) {
   if (!value) return '—'
   const raw = String(value).replace('T', ' ').slice(0, 19)
