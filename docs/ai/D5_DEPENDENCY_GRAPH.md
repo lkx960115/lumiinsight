@@ -3,7 +3,7 @@
 ```
 User/RBAC
    └── Project
-          ├── ImportJob ──► File(MinIO) ──► Review
+          ├── ImportJob ──► File(MinIO) ──► Review（认模板列与商家导出列名）
           │                                    ├── 清洗标记
           │                                    └── AnalysisResult ──► Aspect
           ├── LlmRoute（分析时读取，不反向依赖项目）

@@ -10,14 +10,20 @@ public final class PlatformNormalizer {
             Map.entry("xiaohongshu", "xiaohongshu"),
             Map.entry("xhs", "xiaohongshu"),
             Map.entry("小红书", "xiaohongshu"),
+            Map.entry("小紅書", "xiaohongshu"),
             Map.entry("jd", "jd"),
             Map.entry("京东", "jd"),
+            Map.entry("京東", "jd"),
+            Map.entry("京东商城", "jd"),
             Map.entry("taobao", "taobao"),
             Map.entry("淘宝", "taobao"),
+            Map.entry("淘寶", "taobao"),
             Map.entry("天猫", "taobao"),
+            Map.entry("天貓", "taobao"),
             Map.entry("tmall", "taobao"),
             Map.entry("douyin", "douyin"),
-            Map.entry("抖音", "douyin")
+            Map.entry("抖音", "douyin"),
+            Map.entry("抖店", "douyin")
     );
 
     private PlatformNormalizer() {

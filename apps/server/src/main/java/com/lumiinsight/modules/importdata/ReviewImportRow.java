@@ -3,6 +3,8 @@ package com.lumiinsight.modules.importdata;
 import com.alibaba.excel.annotation.ExcelProperty;
 import lombok.Data;
 
+import java.util.Map;
+
 @Data
 public class ReviewImportRow {
     @ExcelProperty("平台")
@@ -25,4 +27,5 @@ public class ReviewImportRow {
     private String sourceUrl;
     private int rowIndex;
     private String error;
+    private Map<String, String> sourceColumns;
 }

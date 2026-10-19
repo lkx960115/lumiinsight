@@ -16,6 +16,6 @@ public class UnimplementedChannelAdapter implements ChannelAdapter {
 
     @Override
     public void pull(Long projectId) {
-        throw BizException.of("CHANNEL_NOT_IMPLEMENTED", "平台采集未开放，请使用 Excel/CSV 导入。projectId=" + projectId);
+        throw BizException.of("CHANNEL_NOT_IMPLEMENTED", "平台采集未开放，请从商家后台导出评价后再导入。");
     }
 }

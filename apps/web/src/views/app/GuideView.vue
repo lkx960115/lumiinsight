@@ -20,7 +20,7 @@
 
     <el-card class="block">
       <template #header>3. 导入样例评论</template>
-      <p class="muted">用仓库里的 <code>eval/fixtures/sample-reviews.csv</code>。点「选择文件导入」，等到导入完成（大约几十秒）。不要在这里抓取平台。</p>
+      <p class="muted">可用「下载样例」，或从京东/淘宝/抖店/小红书商家后台导出评价表再导入。系统认「评价内容」「评论内容」等列名。点「选择文件导入」，等到导入完成。不要在这里抓取平台。</p>
     </el-card>
 
     <el-card class="block">

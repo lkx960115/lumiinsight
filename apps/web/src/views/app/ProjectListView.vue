@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>项目</h2>
-        <p class="muted">按品牌、型号看评论洞察。数据来自导入，不在这里抓取平台。</p>
+        <p class="muted">按品牌、型号看评论洞察。数据来自商家后台导出后导入，不在这里抓取平台。</p>
       </div>
       <div class="page-actions">
         <el-button text @click="guideVisible = true">怎么走一遍</el-button>
@@ -80,7 +80,7 @@
     <el-dialog v-model="guideVisible" title="怎么走一遍" width="560px">
       <ol class="guide-steps">
         <li>新建项目，填品牌和主型号。</li>
-        <li>进入项目，下载样例或用自己的 Excel/CSV 导入。</li>
+        <li>进入项目，下载样例，或从商家后台导出评价表再导入。</li>
         <li>点「清洗并分析」。可以离开页面，稍后再回来看结果。</li>
         <li>看图表、按月走势和原评。评论列表可改成「按意思找」。</li>
         <li>侧栏「报告」打开结论，点「查看原评」核对原文。摘要和建议会带原评；要对照竞品时，在项目详情填竞品并导入对应评论，再生成报告。报告里可按方面、按月对照谁在变差。项目详情会按月对照口碑预警；右侧可点「问原评」，只根据本项目原评回答。</li>

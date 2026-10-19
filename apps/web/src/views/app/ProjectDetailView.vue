@@ -62,8 +62,9 @@
 
     <el-card class="block">
       <template #header>导入评论（Excel / CSV）</template>
-      <p class="muted">模板列：平台、原文（必填），时间、商品ID、评论ID、点赞、作者匿名ID、商品名、链接。用 Excel 打开请重新下载样例，不要把乱码文件再导入。导入成功后可点「清洗并分析」。</p>
+      <p class="muted">从京东、淘宝、抖店、小红书商家后台导出评价表再导入。认「评价内容」「评论内容」等常见列名；没有平台列时，把文件名带上「京东」或「淘宝」即可。不会在这里抓取平台。用 Excel 打开请重新下载样例，不要把乱码文件再导入。</p>
       <div class="toolbar">
+        <el-button text @click="importHelpVisible = true">各平台怎么导出</el-button>
         <el-button text tag="a" href="/sample-reviews.csv" download>下载样例</el-button>
         <el-upload :show-file-list="false" :http-request="upload" accept=".xlsx,.xls,.csv">
           <el-button v-permission="'import:execute'" type="primary">选择文件导入</el-button>
@@ -224,6 +225,18 @@
       <p v-else class="muted">对应原评已不存在。</p>
     </el-drawer>
 
+    <el-dialog v-model="importHelpVisible" title="从商家后台导出" width="560px">
+      <p class="muted">只导入商家授权导出的评价，不抓取平台页面。竞品口碑也请自行导出后再导入。</p>
+      <p>京东：商家后台 → 评价管理 → 导出。常见列：评价内容、评价时间、商品名称。</p>
+      <p>淘宝 / 天猫：卖家中心 → 评价管理 → 导出。常见列：评价内容、评价时间、宝贝标题。</p>
+      <p>抖音：抖店 → 评价管理 → 导出。常见列：评价内容、评价时间、商品名称。</p>
+      <p>小红书：专业号后台导出评论。常见列：评论内容、发布时间。</p>
+      <p class="muted">没有「平台」列时，文件名带上京东、淘宝、小红书或抖音。也可用「下载样例」看灯鉴模板。</p>
+      <template #footer>
+        <el-button type="primary" @click="importHelpVisible = false">知道了</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="editVisible" title="编辑项目" width="560px">
       <el-form label-width="90px">
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
@@ -281,6 +294,7 @@ const alerts = ref<any[]>([])
 const alertsLoading = ref(false)
 const alertDrawer = ref(false)
 const alertEvidences = ref<any[]>([])
+const importHelpVisible = ref(false)
 const editVisible = ref(false)
 const competitorsText = ref('')
 const keywordsText = ref('')

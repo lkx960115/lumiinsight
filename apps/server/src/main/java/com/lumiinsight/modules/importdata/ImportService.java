@@ -2,7 +2,7 @@ package com.lumiinsight.modules.importdata;
 
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.context.AnalysisContext;
-import com.alibaba.excel.read.listener.ReadListener;
+import com.alibaba.excel.event.AnalysisEventListener;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,6 +25,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -42,8 +43,13 @@ public class ImportService {
     private static final DateTimeFormatter[] TIME_FORMATS = new DateTimeFormatter[]{
             DateTimeFormatter.ISO_LOCAL_DATE_TIME,
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
             DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"),
-            DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"),
+            DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss"),
+            DateTimeFormatter.ofPattern("yyyy.MM.dd"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+            DateTimeFormatter.ofPattern("yyyy/MM/dd")
     };
 
     private final ProjectService projectService;
@@ -169,24 +175,32 @@ public class ImportService {
             job.setStatus("READY");
             job.setMessage(fail == 0 ? "导入完成" : "部分行失败，请下载错误报告");
             importJobMapper.updateById(job);
-        } catch (Exception e) {
+        } catch (BizException e) {
             job.setStatus("FAILED");
             job.setMessage(e.getMessage());
+            importJobMapper.updateById(job);
+        } catch (Exception e) {
+            job.setStatus("FAILED");
+            job.setMessage("导入失败，请检查是否为 Excel 或 CSV，且含评价内容");
             importJobMapper.updateById(job);
         }
     }
 
     private void persist(ImportJob job, ReviewImportRow row) throws Exception {
-        if (!StringUtils.hasText(row.getPlatform())) {
-            throw new IllegalArgumentException("平台不能为空");
-        }
         if (!StringUtils.hasText(row.getContent())) {
             throw new IllegalArgumentException("原文不能为空");
         }
-        if (!PlatformNormalizer.isKnown(row.getPlatform())) {
-            throw new IllegalArgumentException("不支持的平台: " + row.getPlatform());
+        String platformRaw = row.getPlatform();
+        if (!StringUtils.hasText(platformRaw)) {
+            platformRaw = ImportColumnMapper.inferPlatformFromFilename(job.getFilename());
         }
-        String platform = PlatformNormalizer.normalize(row.getPlatform());
+        if (!StringUtils.hasText(platformRaw) || !PlatformNormalizer.isKnown(platformRaw)) {
+            if (!StringUtils.hasText(platformRaw)) {
+                throw new IllegalArgumentException(ImportColumnMapper.missingPlatformMessage());
+            }
+            throw new IllegalArgumentException("不支持的平台: " + platformRaw + "。请填京东、淘宝、小红书或抖音");
+        }
+        String platform = PlatformNormalizer.normalize(platformRaw);
         String content = row.getContent().trim();
         LocalDateTime time = parseTime(row.getReviewTime());
         String contentHash = HashUtil.sha256(platform + "|" + content);
@@ -214,87 +228,133 @@ public class ImportService {
         review.setSourceUrl(blankToNull(row.getSourceUrl()));
         review.setContentHash(contentHash);
         Map<String, Object> raw = new LinkedHashMap<>();
-        raw.put("platform", row.getPlatform());
-        raw.put("content", row.getContent());
-        raw.put("reviewTime", row.getReviewTime());
-        raw.put("productId", row.getProductId());
-        raw.put("reviewId", row.getReviewId());
-        raw.put("likeCount", row.getLikeCount());
-        raw.put("authorHash", row.getAuthorHash());
-        raw.put("productName", row.getProductName());
-        raw.put("sourceUrl", row.getSourceUrl());
+        if (row.getSourceColumns() != null && !row.getSourceColumns().isEmpty()) {
+            raw.putAll(row.getSourceColumns());
+        } else {
+            raw.put("platform", row.getPlatform());
+            raw.put("content", row.getContent());
+            raw.put("reviewTime", row.getReviewTime());
+            raw.put("productId", row.getProductId());
+            raw.put("reviewId", row.getReviewId());
+            raw.put("likeCount", row.getLikeCount());
+            raw.put("authorHash", row.getAuthorHash());
+            raw.put("productName", row.getProductName());
+            raw.put("sourceUrl", row.getSourceUrl());
+        }
         review.setRawPayload(objectMapper.writeValueAsString(raw));
         reviewMapper.insert(review);
     }
 
     private List<ReviewImportRow> parse(String filename, byte[] bytes) {
-        String lower = filename.toLowerCase(Locale.ROOT);
+        String lower = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
         if (lower.endsWith(".csv")) {
             return parseCsv(bytes);
         }
-        List<ReviewImportRow> rows = new ArrayList<>();
-        EasyExcel.read(new ByteArrayInputStream(bytes), ReviewImportRow.class, new ReadListener<ReviewImportRow>() {
-            @Override
-            public void invoke(ReviewImportRow data, AnalysisContext context) {
-                data.setRowIndex(context.readRowHolder().getRowIndex() + 1);
-                rows.add(data);
-            }
-
-            @Override
-            public void doAfterAllAnalysed(AnalysisContext context) {
-            }
-        }).sheet().headRowNumber(1).doRead();
-        if (rows.isEmpty()) {
-            throw BizException.of("IMPORT_INVALID", "没有读取到数据行，请检查模板列名");
-        }
-        return rows;
+        return parseExcel(bytes);
     }
 
-    private List<ReviewImportRow> parseCsv(byte[] bytes) {
-        List<ReviewImportRow> rows = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8))) {
-            String header = reader.readLine();
-            if (header != null && header.startsWith("\uFEFF")) {
-                header = header.substring(1);
-            }
-            if (header == null || !header.contains("平台") || !header.contains("原文")) {
-                throw BizException.of("IMPORT_INVALID", "CSV 缺少必填列：平台、原文");
-            }
-            String[] heads = splitCsv(header);
-            Map<String, Integer> idx = new LinkedHashMap<>();
-            for (int i = 0; i < heads.length; i++) {
-                idx.put(heads[i].trim(), i);
-            }
-            String line;
-            int lineNo = 1;
-            while ((line = reader.readLine()) != null) {
-                lineNo++;
-                if (line.isBlank()) {
-                    continue;
+    private List<ReviewImportRow> parseExcel(byte[] bytes) {
+        List<Map<Integer, String>> grid = new ArrayList<>();
+        try {
+            EasyExcel.read(new ByteArrayInputStream(bytes), new AnalysisEventListener<Map<Integer, String>>() {
+                @Override
+                public void invoke(Map<Integer, String> data, AnalysisContext context) {
+                    grid.add(data == null ? Map.of() : new LinkedHashMap<>(data));
                 }
-                String[] cols = splitCsv(line);
-                ReviewImportRow row = new ReviewImportRow();
-                row.setRowIndex(lineNo);
-                row.setPlatform(col(cols, idx, "平台"));
-                row.setContent(col(cols, idx, "原文"));
-                row.setReviewTime(col(cols, idx, "时间"));
-                row.setProductId(col(cols, idx, "商品ID"));
-                row.setReviewId(col(cols, idx, "评论ID"));
-                row.setLikeCount(col(cols, idx, "点赞"));
-                row.setAuthorHash(col(cols, idx, "作者匿名ID"));
-                row.setProductName(col(cols, idx, "商品名"));
-                row.setSourceUrl(col(cols, idx, "链接"));
-                rows.add(row);
-            }
+
+                @Override
+                public void doAfterAllAnalysed(AnalysisContext context) {
+                }
+            }).sheet().headRowNumber(0).doRead();
         } catch (BizException e) {
             throw e;
         } catch (Exception e) {
-            throw BizException.of("IMPORT_INVALID", "CSV 解析失败");
+            throw BizException.of("IMPORT_INVALID", "Excel 解析失败，请另存为 .xlsx 或 CSV 后再试");
+        }
+        List<String[]> lines = new ArrayList<>();
+        for (Map<Integer, String> data : grid) {
+            lines.add(cellsOf(data));
+        }
+        return rowsFromLines(lines);
+    }
+
+    private List<ReviewImportRow> parseCsv(byte[] bytes) {
+        List<ReviewImportRow> utf = readCsv(bytes, StandardCharsets.UTF_8);
+        if (utf != null) {
+            return utf;
+        }
+        List<ReviewImportRow> gbk = readCsv(bytes, Charset.forName("GB18030"));
+        if (gbk != null) {
+            return gbk;
+        }
+        throw BizException.of("IMPORT_INVALID", ImportColumnMapper.missingContentMessage());
+    }
+
+    private List<ReviewImportRow> readCsv(byte[] bytes, Charset charset) {
+        List<String[]> lines = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bytes), charset))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (lines.isEmpty() && line.startsWith("\uFEFF")) {
+                    line = line.substring(1);
+                }
+                if (line.isBlank()) {
+                    continue;
+                }
+                lines.add(splitCsv(line));
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        int headerAt = ImportColumnMapper.headerRow(lines);
+        if (headerAt < 0) {
+            return null;
+        }
+        return rowsFromLines(lines);
+    }
+
+    private List<ReviewImportRow> rowsFromLines(List<String[]> lines) {
+        int headerAt = ImportColumnMapper.headerRow(lines);
+        if (headerAt < 0) {
+            throw BizException.of("IMPORT_INVALID", ImportColumnMapper.missingContentMessage());
+        }
+        String[] heads = lines.get(headerAt);
+        Map<ImportColumnMapper.Field, Integer> index = ImportColumnMapper.index(heads);
+        List<ReviewImportRow> rows = new ArrayList<>();
+        for (int i = headerAt + 1; i < lines.size(); i++) {
+            String[] cols = lines.get(i);
+            Map<String, String> source = new LinkedHashMap<>();
+            for (int c = 0; c < heads.length; c++) {
+                String key = heads[c] == null ? "" : heads[c].trim();
+                if (!key.isEmpty()) {
+                    source.put(key, c < cols.length && cols[c] != null ? cols[c].trim() : "");
+                }
+            }
+            ReviewImportRow row = ImportColumnMapper.toRow(index, cols, i + 1, source);
+            if (ImportColumnMapper.blank(row)) {
+                continue;
+            }
+            rows.add(row);
         }
         if (rows.isEmpty()) {
             throw BizException.of("IMPORT_INVALID", "没有读取到数据行");
         }
         return rows;
+    }
+
+    private static String[] cellsOf(Map<Integer, String> data) {
+        int max = -1;
+        for (Integer key : data.keySet()) {
+            if (key != null && key > max) {
+                max = key;
+            }
+        }
+        String[] cols = new String[max + 1];
+        for (int i = 0; i <= max; i++) {
+            String v = data.get(i);
+            cols[i] = v == null ? "" : v.trim();
+        }
+        return cols;
     }
 
     private static String[] splitCsv(String line) {
@@ -314,15 +374,6 @@ public class ImportService {
         }
         out.add(cur.toString());
         return out.toArray(String[]::new);
-    }
-
-    private static String col(String[] cols, Map<String, Integer> idx, String name) {
-        Integer i = idx.get(name);
-        if (i == null || i >= cols.length) {
-            return null;
-        }
-        String v = cols[i];
-        return v == null ? null : v.trim();
     }
 
     private byte[] toErrorCsv(List<ReviewImportRow> failed) {
@@ -349,11 +400,20 @@ public class ImportService {
             return null;
         }
         String v = raw.trim().replace("T", " ");
+        if (v.matches("\\d{5}(\\.\\d+)?")) {
+            try {
+                double serial = Double.parseDouble(v);
+                if (serial > 20000 && serial < 80000) {
+                    return LocalDateTime.of(1899, 12, 30, 0, 0).plusSeconds(Math.round(serial * 86400d));
+                }
+            } catch (Exception ignored) {
+            }
+        }
         for (DateTimeFormatter fmt : TIME_FORMATS) {
             try {
-                if (fmt == DateTimeFormatter.ofPattern("yyyy-MM-dd") || v.length() == 10) {
+                if (v.length() <= 10) {
                     try {
-                        return java.time.LocalDate.parse(v.substring(0, 10), DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay();
+                        return java.time.LocalDate.parse(v.substring(0, Math.min(10, v.length())), fmt).atStartOfDay();
                     } catch (Exception ignored) {
                     }
                 }
@@ -372,10 +432,15 @@ public class ImportService {
         if (!StringUtils.hasText(raw)) {
             return 0;
         }
+        String v = raw.trim();
         try {
-            return Integer.parseInt(raw.trim());
+            return Integer.parseInt(v);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("点赞必须是数字");
+            try {
+                return (int) Math.round(Double.parseDouble(v));
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("点赞必须是数字");
+            }
         }
     }
 
