@@ -9,7 +9,7 @@ User/RBAC
           ├── LlmRoute（分析时读取，不反向依赖项目）
           ├── Evidence ◄── Review + ReportSection
           ├── Ask（只读本项目原评，无证据不编）
-          ├── Alert（按月对照方面负向，结论带原评）
+          ├── Alert（按月对照负向变多 / 新槽点 / 声量骤降，结论带原评）
           └── Report ──► 导出 PDF / 表格 / 文稿
 LlmRoute ──► LlmUsage（只读展示，不回写报告）
 ```

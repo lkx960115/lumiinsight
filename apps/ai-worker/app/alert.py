@@ -6,11 +6,14 @@ from typing import Any
 
 from app.llm import chat_json
 
-ALERT_RULES = """你是灯鉴口碑顾问。下面是按评论时间对照出来的负向变多，以及对应原评。
+ALERT_RULES = """你是灯鉴口碑顾问。下面是按评论时间对照出来的变化，以及对应原评。
 规则：
-1. 每个方面写一句中文：哪方面、哪段时间、负向从多少条变成多少条，并点到原评里的说法。
-2. evidenceIds 只能用该方面给出的 id。不许编销量、型号或未出现的事实。
-3. 只输出 JSON 对象：{"items":[{"aspect":"安装","summary":"中文","evidenceIds":[id,...]}]}，不要 Markdown。
+1. 每条写一句中文，kind 必须带回输入值：
+   - neg_spike：哪方面负向从多少条变成多少条，并点到原评。
+   - new_pain：哪方面这个月新出现、上个月几乎没有，并点到原评。
+   - volume_drop：有效评论从多少条变成多少条、声量变少，并点到原评。数字只能用输入里的。
+2. evidenceIds 只能用该条给出的 id。不许编销量、型号或未出现的事实。
+3. 只输出 JSON 对象：{"items":[{"kind":"neg_spike","aspect":"安装","summary":"中文","evidenceIds":[id,...]}]}，不要 Markdown。
 4. 方面名必须和输入一致，不要发明新方面。
 """
 
@@ -24,13 +27,17 @@ def write_alerts(items: list[dict[str, Any]], spec: dict[str, Any] | None) -> di
         if not aspect:
             continue
         allowed, lines = snippet_lines(row.get("snippets") or [])
+        kind = str(row.get("kind") or "neg_spike").strip() or "neg_spike"
         prepared.append(
             {
+                "kind": kind,
                 "aspect": aspect,
                 "recentLabel": str(row.get("recentLabel") or ""),
                 "previousLabel": str(row.get("previousLabel") or ""),
                 "recentNeg": int(row.get("recentNeg") or 0),
                 "previousNeg": int(row.get("previousNeg") or 0),
+                "recentVolume": int(row.get("recentVolume") or 0),
+                "previousVolume": int(row.get("previousVolume") or 0),
                 "allowed": allowed,
                 "lines": lines,
                 "fallback": fallback_summary(row, allowed, lines),
@@ -53,15 +60,18 @@ def write_alerts(items: list[dict[str, Any]], spec: dict[str, Any] | None) -> di
             "source": "rule",
             "usage": {},
         }
-    by_aspect = {}
+    by_key = {}
     raw_items = data.get("items") if isinstance(data, dict) else None
     if isinstance(raw_items, list):
         for item in raw_items:
-            if isinstance(item, dict) and item.get("aspect"):
-                by_aspect[str(item.get("aspect")).strip()] = item
+            if not isinstance(item, dict) or not item.get("aspect"):
+                continue
+            kind = str(item.get("kind") or "neg_spike").strip() or "neg_spike"
+            by_key[kind + ":" + str(item.get("aspect")).strip()] = item
+            by_key.setdefault(str(item.get("aspect")).strip(), item)
     out = []
     for row in prepared:
-        llm_row = by_aspect.get(row["aspect"]) or {}
+        llm_row = by_key.get(row["kind"] + ":" + row["aspect"]) or by_key.get(row["aspect"]) or {}
         summary = str(llm_row.get("summary") or "").strip()
         ids = filter_ids(llm_row.get("evidenceIds"), row["allowed"])
         if not summary:
@@ -81,11 +91,26 @@ def fallback_summary(row: dict[str, Any], allowed: list[int], lines: list[str]) 
     if lines:
         text = lines[0].split("\n", 1)[-1].strip()
         quote = text[:24] + ("…" if len(text) > 24 else "")
+    kind = str(row.get("kind") or "neg_spike")
     aspect = str(row.get("aspect") or "")
     recent = str(row.get("recentLabel") or "最近")
     previous = str(row.get("previousLabel") or "上一期")
     recent_neg = int(row.get("recentNeg") or 0)
     previous_neg = int(row.get("previousNeg") or 0)
+    recent_vol = int(row.get("recentVolume") or 0)
+    previous_vol = int(row.get("previousVolume") or 0)
+    cited = ("原评写到「%s」。" % quote) if quote else "请核对原评。"
+    if kind == "volume_drop":
+        head = "%s有效评论 %s 条，%s %s 条，声量明显变少。" % (recent, recent_vol, previous, previous_vol)
+        return (head + "上个月原评还在说「%s」。" % quote) if quote else head + "请核对原评。"
+    if kind == "new_pain":
+        return "%s新出现「%s」负向 %s 条，%s几乎没有相关原评。%s" % (
+            recent,
+            aspect,
+            recent_neg,
+            previous,
+            cited,
+        )
     if quote:
         return "%s「%s」负向 %s 条，%s %s 条。原评写到「%s」。" % (
             recent,
@@ -126,7 +151,26 @@ def snippet_lines(snippets: Any) -> tuple[list[int], list[str]]:
 
 def describe(row: dict[str, Any]) -> str:
     body = "\n".join(row["lines"]) or "（无原评）"
-    return "方面：%s\n%s 负向 %s 条；%s 负向 %s 条\n原评：\n%s" % (
+    kind = row.get("kind") or "neg_spike"
+    if kind == "volume_drop":
+        return "类型：声量骤降\n方面：%s\n%s 有效评论 %s 条；%s %s 条\n原评：\n%s" % (
+            row["aspect"],
+            row["recentLabel"],
+            row["recentVolume"],
+            row["previousLabel"],
+            row["previousVolume"],
+            body,
+        )
+    if kind == "new_pain":
+        return "类型：新槽点\n方面：%s\n%s 负向 %s 条；%s 声量 %s\n原评：\n%s" % (
+            row["aspect"],
+            row["recentLabel"],
+            row["recentNeg"],
+            row["previousLabel"],
+            row["previousVolume"],
+            body,
+        )
+    return "类型：负向变多\n方面：%s\n%s 负向 %s 条；%s 负向 %s 条\n原评：\n%s" % (
         row["aspect"],
         row["recentLabel"],
         row["recentNeg"],
@@ -152,6 +196,7 @@ def filter_ids(raw: Any, allowed: list[int]) -> list[int]:
 
 def pack(row: dict[str, Any], summary: str, ids: list[int], source: str) -> dict[str, Any]:
     return {
+        "kind": row.get("kind") or "neg_spike",
         "aspect": row["aspect"],
         "summary": summary,
         "evidenceIds": ids,

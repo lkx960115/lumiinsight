@@ -32,10 +32,10 @@
 
     <el-card class="block">
       <template #header>口碑预警</template>
-      <p class="muted">对照最近一个月和上一月。某方面负向突然变多会出现在这里，每条都能查看原评。没有评论时间时无法对照。</p>
+      <p class="muted">对照最近一个月和上一月。方面负向突然变多、新出现的槽点、有效评论明显变少，会出现在这里。每条都能查看原评。没有评论时间时无法对照。</p>
       <div v-loading="alertsLoading">
-        <p v-if="!alertsLoading && !alerts.length" class="muted">最近没有某方面负向突然变多。请先导入带时间的评论并完成清洗并分析。</p>
-        <div v-for="item in alerts" :key="item.aspect" class="report-claim">
+        <p v-if="!alertsLoading && !alerts.length" class="muted">最近没有需要盯的变化。请先导入带时间的评论并完成清洗并分析。</p>
+        <div v-for="item in alerts" :key="(item.kind || 'neg_spike') + ':' + item.aspect" class="report-claim">
           <p>{{ item.summary }}</p>
           <div class="row-actions">
             <el-button v-if="item.evidences?.length" text @click="openAlert(item)">查看原评</el-button>
