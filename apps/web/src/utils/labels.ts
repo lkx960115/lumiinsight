@@ -130,20 +130,23 @@ export function friendlyMessage(raw?: string | null) {
   const text = String(raw || '').trim()
   if (!text) return '—'
   const lower = text.toLowerCase()
-  if (/octet-stream|httpmessageconverter|extracting response|java\.util\.map/.test(lower)) {
-    return '分析服务没有返回可用结果，请重试'
+  if (/octet-stream|httpmessageconverter|extracting response|java\.util\.map|没有返回清洗|没有返回分析|worker 未返回/.test(lower)) {
+    return '分析服务没有返回结果，请重试。'
   }
-  if (/worker 不可用|connection refused|connect timed out/.test(lower)) {
-    return '分析服务暂时连不上，请稍后重试'
+  if (/worker 不可用|connection refused|connect timed out|failed to connect|connection reset/.test(lower) || /^worker /i.test(text)) {
+    return '分析服务暂时连不上。请先启动分析进程，再点重试。'
   }
   if (text.includes('401') || text.includes('未授权')) {
-    return '智谱未授权，请到提供方里重新粘贴 API Key'
+    return '模型未授权。请到系统管理重新粘贴密钥，再点重试。'
   }
   if (lower.includes('timeout') || lower.includes('timed out') || text.includes('超时')) {
-    return '处理超时，请稍后重试'
+    return '处理超时，请稍后重试。'
+  }
+  if (/^分析失败[:：]|Worker 不可用或调用失败/.test(text)) {
+    return '分析没有完成，请重试。'
   }
   if (/exception|caused by:|at com\.|java\./i.test(text)) {
-    return '处理失败，请重试'
+    return '处理失败，请重试。'
   }
   return text
 }
@@ -173,9 +176,10 @@ export function pipelineRemark(message?: string | null) {
   const analyzed = raw.match(/分析完成：(\d+) 条，方面 (\d+) 条(?:（([^）]*)）)?/)
   if (analyzed) {
     const how = analyzed[3] || ''
-    if (/未配置模型 Key/.test(how)) return `${analyzed[1]} 条，${analyzed[2]} 个方面（未配置模型，按词典）`
-    if (/调用失败已降级/.test(how)) return `${analyzed[1]} 条，${analyzed[2]} 个方面（模型失败，已按词典）`
-    if (/未返回有效结果/.test(how)) return `${analyzed[1]} 条，${analyzed[2]} 个方面（模型无结果，已按词典）`
+    if (/未配置模型/.test(how)) return `${analyzed[1]} 条，${analyzed[2]} 个方面（未配置模型，已按词典）`
+    if (/调用失败已降级|模型失败/.test(how)) return `${analyzed[1]} 条，${analyzed[2]} 个方面（模型失败，已按词典）`
+    if (/未返回有效结果|模型无结果/.test(how)) return `${analyzed[1]} 条，${analyzed[2]} 个方面（模型无结果，已按词典）`
+    if (/已走模型|模型 JSON/.test(how)) return `${analyzed[1]} 条，${analyzed[2]} 个方面`
     return `${analyzed[1]} 条，${analyzed[2]} 个方面`
   }
   const cleaned = raw.match(/清洗完成：有效 (\d+)\/(\d+)，去重 (\d+)，广告 (\d+)，过短 (\d+)/)

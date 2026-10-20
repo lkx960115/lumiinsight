@@ -160,7 +160,7 @@ public class PipelineRunner {
         } catch (Exception e) {
             log.warn("清洗任务失败 jobId={}", job.getId(), e);
             job.setStatus(JobStatus.FAILED.name());
-            job.setMessage("Worker 不可用或调用失败: " + e.getMessage());
+            job.setMessage(PipelineCopy.cleanFailed(e));
             pipelineJobMapper.updateById(job);
             return false;
         }
@@ -221,8 +221,8 @@ public class PipelineRunner {
                 done = to;
             }
             String how = anyLlm
-                    ? "模型 JSON"
-                    : (specs.isEmpty() ? "词典规则（未配置模型 Key）" : "词典规则（模型未返回有效结果）");
+                    ? "已走模型"
+                    : (specs.isEmpty() ? "未配置模型，已按词典" : "模型无结果，已按词典");
             String analyzeMsg = "分析完成：" + done + " 条，方面 " + aspectCount + " 条（" + how + "）" + modelExtra;
             job.setStatus(JobStatus.INDEXING.name());
             progress(job, "正在建立检索");
@@ -236,7 +236,7 @@ public class PipelineRunner {
         } catch (Exception e) {
             log.warn("分析任务失败 jobId={}", job.getId(), e);
             job.setStatus(JobStatus.FAILED.name());
-            job.setMessage("分析失败: " + e.getMessage());
+            job.setMessage(PipelineCopy.analyzeFailed(e));
             pipelineJobMapper.updateById(job);
         }
     }
@@ -372,7 +372,7 @@ public class PipelineRunner {
     @SuppressWarnings("unchecked")
     private void applyCleanResult(Long projectId, Map<String, Object> result) {
         if (result == null || result.get("items") == null) {
-            throw new IllegalStateException("Worker 未返回清洗结果");
+            throw new IllegalStateException(PipelineCopy.noCleanResult());
         }
         List<Map<String, Object>> items = (List<Map<String, Object>>) result.get("items");
         for (Map<String, Object> item : items) {
@@ -410,7 +410,7 @@ public class PipelineRunner {
     @SuppressWarnings("unchecked")
     private List<Long> applyAnalyzeResult(Long projectId, Map<String, Object> result) {
         if (result == null || result.get("items") == null) {
-            throw new IllegalStateException("Worker 未返回分析结果");
+            throw new IllegalStateException(PipelineCopy.noAnalyzeResult());
         }
         List<Map<String, Object>> items = (List<Map<String, Object>>) result.get("items");
         List<Long> reviewIds = new ArrayList<>();

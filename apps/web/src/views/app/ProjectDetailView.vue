@@ -104,7 +104,7 @@
 
     <el-card class="block">
       <template #header>分析流水线</template>
-      <p class="muted">一条导入可一键清洗并分析。失败任务会留下说明，可点重试。点开评论左侧箭头可看方面-情感-原因和置信度。方面名必须落在词典或「其它」。</p>
+      <p class="muted">一条导入可一键清洗并分析。失败时状态下方会写清是分析服务没开、超时，还是没配模型已按词典，可点重试。点开评论左侧箭头可看方面-情感-原因和置信度。方面名必须落在词典或「其它」。</p>
       <el-table :data="pipeline.records" class="mt" empty-text="还没有分析记录。">
         <el-table-column label="类型" min-width="120">
           <template #default="{ row }">{{ jobTypeLabel(row.type) }}</template>

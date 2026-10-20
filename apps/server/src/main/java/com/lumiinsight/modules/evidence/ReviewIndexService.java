@@ -3,6 +3,7 @@ package com.lumiinsight.modules.evidence;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lumiinsight.modules.llm.LlmRuntimeService;
 import com.lumiinsight.modules.llm.LlmUsageService;
+import com.lumiinsight.modules.pipeline.PipelineCopy;
 import com.lumiinsight.modules.pipeline.WorkerClient;
 import com.lumiinsight.modules.review.entity.Review;
 import com.lumiinsight.modules.review.entity.ReviewAspect;
@@ -131,7 +132,7 @@ public class ReviewIndexService {
                 last = e;
                 log.warn("向量写入失败，尝试下一个模型 jobId={}", jobId, e);
                 try {
-                    llmUsageService.record(jobId, projectId, spec, null, false, indexError(e));
+                    llmUsageService.record(jobId, projectId, spec, null, false, PipelineCopy.indexNote(e));
                 } catch (Exception ignored) {
                     log.warn("写入调用记录失败 jobId={}", jobId, ignored);
                 }
@@ -141,7 +142,7 @@ public class ReviewIndexService {
             if (last != null) {
                 log.warn("全部向量模型失败，按方面仍可关键词检索 jobId={}", jobId);
             }
-            return "已可按方面查看原评（向量未写入：" + (last == null ? "未配置向量模型" : indexError(last)) + "）";
+            return "已可按方面查看原评（" + (last == null ? "未配置向量模型，暂用关键词" : PipelineCopy.indexNote(last)) + "）";
         }
         if (dim <= 0 || allPoints.isEmpty() || !qdrantClient.upsert(dim, allPoints)) {
             return "已可按方面查看原评（向量库暂不可用，暂用关键词）";
@@ -153,17 +154,6 @@ public class ReviewIndexService {
         if (progress != null && message != null) {
             progress.accept(message);
         }
-    }
-
-    private static String indexError(Exception e) {
-        String text = e.getMessage() == null ? "" : e.getMessage().replace('\n', ' ').trim();
-        if (text.contains("401")) {
-            return "智谱未授权，请重新粘贴 API Key";
-        }
-        if (text.isBlank()) {
-            return "调用失败";
-        }
-        return text.length() > 240 ? text.substring(0, 240) : text;
     }
 
     private static int toInt(Object raw, int fallback) {
