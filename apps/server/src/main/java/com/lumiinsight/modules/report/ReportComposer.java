@@ -659,9 +659,12 @@ public class ReportComposer {
         List<ReportView.Claim> claims = new ArrayList<>();
         addAskNeg(claims, "安装最常被吐槽的是什么？", "安装", byAspect, allowed, 2);
         addAskColor(claims, byAspect, byReview, allowed);
+        addAskPolarity(claims, "亮度够不够，原评怎么说？", "亮度", "有人说够亮", "有人嫌暗", byAspect, allowed);
+        addAskPolarity(claims, "外观好不好看，原评怎么说？", "外观", "有人说好看", "有人嫌不好看", byAspect, allowed);
         addAskNeg(claims, "售后负向主要集中在哪？", "售后", byAspect, allowed, 1);
-        addAskPrice(claims, byAspect, allowed);
+        addAskPolarity(claims, "价格贵不贵，原评怎么说？", "价格", "有人说实惠", "有人嫌贵", byAspect, allowed);
         addAskShip(claims, byAspect, allowed);
+        addAskPolarity(claims, "有没有频闪？", "频闪", "有人说没有明显频闪", "有人说有频闪", byAspect, allowed);
         addAskRival(claims, project, evidence, byReview, allowed);
         return claims;
     }
@@ -709,8 +712,16 @@ public class ReportComposer {
         add(claims, "问：色温偏冷还是偏暖？ 答：" + answer, ids(first(proof, 3), allowed));
     }
 
-    private static void addAskPrice(List<ReportView.Claim> claims, Map<String, List<Evidence>> byAspect, Set<Long> allowed) {
-        List<Evidence> rows = byAspect.getOrDefault("价格", List.of());
+    private static void addAskPolarity(
+            List<ReportView.Claim> claims,
+            String question,
+            String aspect,
+            String posSaid,
+            String negSaid,
+            Map<String, List<Evidence>> byAspect,
+            Set<Long> allowed
+    ) {
+        List<Evidence> rows = byAspect.getOrDefault(aspect, List.of());
         List<Evidence> neg = bySentiment(rows, "neg");
         List<Evidence> pos = bySentiment(rows, "pos");
         if (neg.isEmpty() && pos.isEmpty()) {
@@ -719,16 +730,16 @@ public class ReportComposer {
         String answer;
         List<Evidence> proof;
         if (!neg.isEmpty() && pos.isEmpty()) {
-            answer = "有人嫌贵，原评写到「" + quoteOf(neg.get(0)) + "」。";
+            answer = negSaid + "，原评写到「" + quoteOf(neg.get(0)) + "」。";
             proof = neg;
         } else if (neg.isEmpty()) {
-            answer = "有人说实惠，原评写到「" + quoteOf(pos.get(0)) + "」。";
+            answer = posSaid + "，原评写到「" + quoteOf(pos.get(0)) + "」。";
             proof = pos;
         } else {
-            answer = "有人嫌贵，也有人说实惠。负向如「" + quoteOf(neg.get(0)) + "」。";
+            answer = negSaid + "，也" + posSaid + "。负向如「" + quoteOf(neg.get(0)) + "」。";
             proof = all(neg, pos);
         }
-        add(claims, "问：价格贵不贵，原评怎么说？ 答：" + answer, ids(first(proof, 3), allowed));
+        add(claims, "问：" + question + " 答：" + answer, ids(first(proof, 3), allowed));
     }
 
     private static void addAskShip(List<ReportView.Claim> claims, Map<String, List<Evidence>> byAspect, Set<Long> allowed) {

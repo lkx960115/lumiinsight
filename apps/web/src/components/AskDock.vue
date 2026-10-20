@@ -22,7 +22,7 @@
         </button>
       </div>
       <div ref="threadEl" class="ask-thread">
-        <p v-if="!messages.length" class="ask-empty">还没有问过。点上面的现成问法，或自己问安装、色温、售后、价格。回答下面可以核对原文。</p>
+        <p v-if="!messages.length" class="ask-empty">还没有问过。点上面的现成问法，或自己问亮度、外观、频闪。回答下面可以核对原文。</p>
         <article v-for="(item, idx) in messages" :key="idx" class="ask-turn" :class="'is-' + item.role">
           <p class="ask-bubble">{{ item.text }}</p>
           <div v-if="item.role === 'assistant' && item.evidences?.length" class="ask-evidence">
@@ -63,9 +63,12 @@ import { formatDateTime, friendlyMessage, platformLabel, sentimentLabel } from '
 const presets = [
   '安装最常被吐槽的是什么？',
   '色温偏冷还是偏暖？',
+  '亮度够不够，原评怎么说？',
+  '外观好不好看，原评怎么说？',
   '售后负向主要集中在哪？',
   '价格贵不贵，原评怎么说？',
   '物流和包装有没有问题？',
+  '有没有频闪？',
   '竞品被抱怨最多的是哪方面？',
 ]
 
