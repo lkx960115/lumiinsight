@@ -169,7 +169,7 @@ public class ReportExporter {
         if (section.getCompare() == null || section.getCompare().isEmpty()) {
             return;
         }
-        md.append("| 对象 | 原评 | 正向 | 负向 | 中性 | 主要痛点 |\n");
+        md.append("| 对象 | 有效评论 | 正向 | 负向 | 中性 | 主要痛点 |\n");
         md.append("| --- | --- | --- | --- | --- | --- |\n");
         for (ReportView.CompareRow row : section.getCompare()) {
             md.append("| ").append(nullToEmpty(row.getName()))

@@ -48,8 +48,19 @@ class AbsaTest(unittest.TestCase):
         self.assertEqual("neg", by_name(items[3])["物流"]["sentiment"])
         self.assertEqual("pos", by_name(items[3])["包装"]["sentiment"])
         self.assertEqual("pos", by_name(items[4])["频闪"]["sentiment"])
+        flicker = by_name(items[4])["频闪"]["reason"]
+        self.assertNotEqual("否定问题表述", flicker)
+        self.assertIn("频闪", flicker)
         self.assertGreaterEqual(items[1]["confidence"], 0.5)
         self.assertIn("词典规则", result["message"])
+
+    def test_negated_flicker_uses_review_words(self):
+        from app.absa import window_polarity
+
+        sentiment, reason, _ = window_polarity("没有明显频闪，护眼还行", "频闪")
+        self.assertEqual("pos", sentiment)
+        self.assertNotEqual("否定问题表述", reason)
+        self.assertIn("频闪", reason)
 
     def test_without_llm_does_not_call_network(self):
         result = analyze_reviews(

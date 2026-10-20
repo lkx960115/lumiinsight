@@ -43,8 +43,9 @@ public class ReportComposer {
     }
 
     public List<ReportView.Section> compose(Project project, ProjectOverview overview, List<Evidence> evidence, List<Review> countedReviews) {
-        Set<Long> allowed = evidence.stream().map(Evidence::getId).filter(Objects::nonNull).collect(Collectors.toSet());
         Map<Long, Review> byReview = indexReviews(countedReviews);
+        evidence = keepCounted(evidence, byReview);
+        Set<Long> allowed = evidence.stream().map(Evidence::getId).filter(Objects::nonNull).collect(Collectors.toSet());
         List<Evidence> pos = bySentiment(evidence, "pos");
         List<Evidence> neg = bySentiment(evidence, "neg");
         Map<String, List<Evidence>> byAspect = new LinkedHashMap<>();
@@ -63,7 +64,7 @@ public class ReportComposer {
         sections.add(section("volume", "声量", volumeClaims(overview, evidence, allowed)));
         sections.add(section("sentiment", "情感结构", sentimentClaims(overview, pos, neg, bySentiment(evidence, "neu"), allowed)));
         sections.add(section("aspects", "方面痛点与卖点", aspectClaims(aspectOrder, byAspect, byReview, allowed)));
-        sections.add(section("quotes", "原声摘录", quoteClaims(pos, neg, allowed)));
+        sections.add(section("quotes", "原声摘录", quoteClaims(pos, neg, byReview, allowed)));
         sections.add(competeSection(project, evidence, byReview, allowed));
         sections.add(section("advice", "改进建议", adviceClaims(aspectOrder, byAspect, pos, byReview, allowed)));
         sections.add(section("ask", "问原评", askClaims(project, byAspect, evidence, byReview, allowed)));
@@ -87,12 +88,12 @@ public class ReportComposer {
         String topNeg = densestAspect(aspectOrder, byAspect, "neg");
         if (topNeg != null) {
             List<Evidence> rows = bySentiment(byAspect.get(topNeg), "neg");
-            add(claims, "「" + topNeg + "」负向最集中，例如「" + quoteOf(rows.get(0)) + "」。", ids(first(rows, 3), allowed));
+            add(claims, "「" + topNeg + "」负向最集中，例如「" + quoteOf(rows.get(0), byReview) + "」。", ids(first(rows, 3), allowed));
         }
         String topPos = densestAspect(aspectOrder, byAspect, "pos");
         if (topPos != null) {
             List<Evidence> rows = bySentiment(byAspect.get(topPos), "pos");
-            add(claims, "「" + topPos + "」被提到较多的卖点，例如「" + quoteOf(rows.get(0)) + "」。", ids(first(rows, 3), allowed));
+            add(claims, "「" + topPos + "」被提到较多的卖点，例如「" + quoteOf(rows.get(0), byReview) + "」。", ids(first(rows, 3), allowed));
         }
         addMonthTrend(claims, overview, neg, byReview, allowed);
         return claims;
@@ -172,10 +173,10 @@ public class ReportComposer {
             }
             shown++;
             if (!pos.isEmpty()) {
-                add(claims, "「" + name + "」卖点：「" + quoteOf(pos.get(0)) + "」。", ids(first(pos, 3), allowed));
+                add(claims, "「" + name + "」卖点：「" + quoteOf(pos.get(0), byReview) + "」。", ids(first(pos, 3), allowed));
             }
             if (!neg.isEmpty()) {
-                add(claims, "「" + name + "」痛点：「" + quoteOf(neg.get(0)) + "」。", ids(first(neg, 3), allowed));
+                add(claims, "「" + name + "」痛点：「" + quoteOf(neg.get(0), byReview) + "」。", ids(first(neg, 3), allowed));
             }
             addAspectTrend(claims, name, rows, byReview, allowed);
         }
@@ -229,7 +230,12 @@ public class ReportComposer {
         add(claims, text, ids(first(proof, 3), allowed));
     }
 
-    private List<ReportView.Claim> quoteClaims(List<Evidence> pos, List<Evidence> neg, Set<Long> allowed) {
+    private List<ReportView.Claim> quoteClaims(
+            List<Evidence> pos,
+            List<Evidence> neg,
+            Map<Long, Review> byReview,
+            Set<Long> allowed
+    ) {
         List<Evidence> mixed = new ArrayList<>();
         int i = 0;
         int j = 0;
@@ -251,7 +257,7 @@ public class ReportComposer {
                 continue;
             }
             String aspect = StringUtils.hasText(row.getAspectName()) ? "「" + row.getAspectName() + "」" : "";
-            add(claims, aspect + "「" + quoteOf(row) + "」", ids(List.of(row), allowed));
+            add(claims, aspect + "「" + quoteOf(row, byReview) + "」", ids(List.of(row), allowed));
         }
         return claims;
     }
@@ -271,11 +277,14 @@ public class ReportComposer {
         }
         for (Evidence row : evidence) {
             Review review = byReview.get(row.getReviewId());
-            String product = review == null ? "" : String.valueOf(review.getProductName() == null ? "" : review.getProductName());
+            if (review == null) {
+                continue;
+            }
+            String product = review.getProductName() == null ? "" : review.getProductName();
             String matched = firstMatch(product, rivals);
             if (matched != null) {
                 byRival.get(matched).add(row);
-            } else if (!StringUtils.hasText(ownKey) || containsIgnore(product, ownKey) || !StringUtils.hasText(product)) {
+            } else if (isOwnProduct(product, project, ownKey)) {
                 own.add(row);
             }
         }
@@ -305,11 +314,11 @@ public class ReportComposer {
         }
         List<ReportView.AspectCompareRow> aspectCompare = aspectCompareOf(byParty);
         List<ReportView.MonthCompareRow> monthCompare = monthCompareOf(byParty, byReview);
-        add(claims, ownName + " 原评 " + ownCounts.volume + " 条（正向 " + ownCounts.pos + "、负向 " + ownCounts.neg
+        add(claims, ownName + " 有效评论 " + ownCounts.volume + " 条（正向 " + ownCounts.pos + "、负向 " + ownCounts.neg
                         + "），已对照 " + present.size() + " 个竞品：" + String.join("、", present) + "。",
                 ids(first(all(own, byRival.get(present.get(0))), 3), allowed));
-        addPainClaim(claims, ownName, own, allowed);
-        addAspectCompareClaims(claims, ownName, aspectCompare, byParty, allowed);
+        addPainClaim(claims, ownName, own, byReview, allowed);
+        addAspectCompareClaims(claims, ownName, aspectCompare, byParty, byReview, allowed);
         addCompeteTrendClaims(claims, ownName, byParty, byReview, allowed);
         if (!missing.isEmpty()) {
             add(claims, "已填写竞品「" + String.join("、", missing) + "」，但评论商品名里还没有对应条目。请导入竞品评论后再生成。",
@@ -318,13 +327,19 @@ public class ReportComposer {
         return section("compete", "竞品对照", claims, compare, aspectCompare, monthCompare);
     }
 
-    private static void addPainClaim(List<ReportView.Claim> claims, String name, List<Evidence> rows, Set<Long> allowed) {
+    private static void addPainClaim(
+            List<ReportView.Claim> claims,
+            String name,
+            List<Evidence> rows,
+            Map<Long, Review> byReview,
+            Set<Long> allowed
+    ) {
         String pain = topPainName(rows);
         if (pain == null) {
             return;
         }
         List<Evidence> neg = bySentiment(byAspect(rows, pain), "neg");
-        add(claims, name + " 最集中痛点「" + pain + "」：「" + quoteOf(neg.get(0)) + "」。", ids(first(neg, 3), allowed));
+        add(claims, name + " 最集中痛点「" + pain + "」：「" + quoteOf(neg.get(0), byReview) + "」。", ids(first(neg, 3), allowed));
     }
 
     private static List<ReportView.AspectCompareRow> aspectCompareOf(Map<String, List<Evidence>> byParty) {
@@ -364,6 +379,7 @@ public class ReportComposer {
             String ownName,
             List<ReportView.AspectCompareRow> aspectCompare,
             Map<String, List<Evidence>> byParty,
+            Map<Long, Review> byReview,
             Set<Long> allowed
     ) {
         int n = 0;
@@ -398,7 +414,7 @@ public class ReportComposer {
                 }
                 bits.append(score.getName()).append("负向 ").append(score.getNeg()).append(" 条");
             }
-            String quote = "「" + quoteOf(source.get(0)) + "」";
+            String quote = "「" + quoteOf(source.get(0), byReview) + "」";
             if (ownName.equals(worst.getName())) {
                 add(claims, "「" + row.getAspect() + "」" + bits + "。本型号更集中：" + quote + "。",
                         ids(first(source, 3), allowed));
@@ -494,7 +510,7 @@ public class ReportComposer {
             add(claims, party.getKey() + " 负向占比从 " + monthLabel(first) + " 的 " + firstPct + "% "
                             + (worse ? "升到" : "降到") + " " + monthLabel(last) + " 的 " + lastPct + "%，"
                             + (worse ? "在变差。" : "有好转。")
-                            + "「" + quoteOf(proof.get(0)) + "」。",
+                            + "「" + quoteOf(proof.get(0), byReview) + "」。",
                     ids(first(proof, 3), allowed));
             n++;
         }
@@ -564,7 +580,7 @@ public class ReportComposer {
                 ? "本型号近月负向更集中，要先看原评。"
                 : "「" + worst + "」近月负向更集中，可作对照卖点。";
         add(claims, monthLabel(picked) + "「" + worst + "」负向占比 " + worstPct + "%，「"
-                        + best + "」" + bestPct + "%。" + how + "「" + quoteOf(proof.get(0)) + "」。",
+                        + best + "」" + bestPct + "%。" + how + "「" + quoteOf(proof.get(0), byReview) + "」。",
                 ids(first(proof, 3), allowed));
     }
 
@@ -628,7 +644,7 @@ public class ReportComposer {
             if (neg.isEmpty()) {
                 continue;
             }
-            add(claims, "优先改「" + name + "」：原评说「" + quoteOf(neg.get(0)) + "」。", ids(first(neg, 3), allowed));
+            add(claims, "优先改「" + name + "」：原评说「" + quoteOf(neg.get(0), byReview) + "」。", ids(first(neg, 3), allowed));
             int before = claims.size();
             addAspectTrend(claims, name, rows, byReview, allowed);
             if (claims.size() > before) {
@@ -644,7 +660,7 @@ public class ReportComposer {
             }
         }
         if (claims.isEmpty() && !pos.isEmpty()) {
-            add(claims, "暂无集中负向，可继续沿用现有卖点表述，并抽查原评是否稳定。例如「" + quoteOf(pos.get(0)) + "」。", ids(first(pos, 3), allowed));
+            add(claims, "暂无集中负向，可继续沿用现有卖点表述，并抽查原评是否稳定。例如「" + quoteOf(pos.get(0), byReview) + "」。", ids(first(pos, 3), allowed));
         }
         return claims;
     }
@@ -657,14 +673,14 @@ public class ReportComposer {
             Set<Long> allowed
     ) {
         List<ReportView.Claim> claims = new ArrayList<>();
-        addAskNeg(claims, "安装最常被吐槽的是什么？", "安装", byAspect, allowed, 2);
+        addAskNeg(claims, "安装最常被吐槽的是什么？", "安装", byAspect, byReview, allowed, 2);
         addAskColor(claims, byAspect, byReview, allowed);
-        addAskPolarity(claims, "亮度够不够，原评怎么说？", "亮度", "有人说够亮", "有人嫌暗", byAspect, allowed);
-        addAskPolarity(claims, "外观好不好看，原评怎么说？", "外观", "有人说好看", "有人嫌不好看", byAspect, allowed);
-        addAskNeg(claims, "售后负向主要集中在哪？", "售后", byAspect, allowed, 1);
-        addAskPolarity(claims, "价格贵不贵，原评怎么说？", "价格", "有人说实惠", "有人嫌贵", byAspect, allowed);
-        addAskShip(claims, byAspect, allowed);
-        addAskPolarity(claims, "有没有频闪？", "频闪", "有人说没有明显频闪", "有人说有频闪", byAspect, allowed);
+        addAskPolarity(claims, "亮度够不够，原评怎么说？", "亮度", "有人说够亮", "有人嫌暗", byAspect, byReview, allowed);
+        addAskPolarity(claims, "外观好不好看，原评怎么说？", "外观", "有人说好看", "有人嫌不好看", byAspect, byReview, allowed);
+        addAskNeg(claims, "售后负向主要集中在哪？", "售后", byAspect, byReview, allowed, 1);
+        addAskPolarity(claims, "价格贵不贵，原评怎么说？", "价格", "有人说实惠", "有人嫌贵", byAspect, byReview, allowed);
+        addAskShip(claims, byAspect, byReview, allowed);
+        addAskPolarity(claims, "有没有频闪？", "频闪", "有人说没有明显频闪", "有人说有频闪", byAspect, byReview, allowed);
         addAskRival(claims, project, evidence, byReview, allowed);
         return claims;
     }
@@ -674,6 +690,7 @@ public class ReportComposer {
             String question,
             String aspect,
             Map<String, List<Evidence>> byAspect,
+            Map<Long, Review> byReview,
             Set<Long> allowed,
             int minNeg
     ) {
@@ -682,7 +699,7 @@ public class ReportComposer {
             return;
         }
         add(claims, "问：" + question + " 答：「" + aspect + "」负向 " + neg.size()
-                + " 条，原评写到「" + quoteOf(neg.get(0)) + "」。", ids(first(neg, 3), allowed));
+                + " 条，原评写到「" + quoteOf(neg.get(0), byReview) + "」。", ids(first(neg, 3), allowed));
     }
 
     private static void addAskColor(
@@ -700,13 +717,13 @@ public class ReportComposer {
         String answer;
         List<Evidence> proof;
         if (cold.size() > warm.size()) {
-            answer = "原评更多写到偏冷，例如「" + quoteOf(cold.get(0)) + "」。";
+            answer = "原评更多写到偏冷，例如「" + quoteOf(cold.get(0), byReview) + "」。";
             proof = cold;
         } else if (warm.size() > cold.size()) {
-            answer = "原评更多写到偏暖，例如「" + quoteOf(warm.get(0)) + "」。";
+            answer = "原评更多写到偏暖，例如「" + quoteOf(warm.get(0), byReview) + "」。";
             proof = warm;
         } else {
-            answer = "偏冷、偏暖都有人提。偏冷如「" + quoteOf(cold.get(0)) + "」。";
+            answer = "偏冷、偏暖都有人提。偏冷如「" + quoteOf(cold.get(0), byReview) + "」。";
             proof = all(cold, warm);
         }
         add(claims, "问：色温偏冷还是偏暖？ 答：" + answer, ids(first(proof, 3), allowed));
@@ -719,6 +736,7 @@ public class ReportComposer {
             String posSaid,
             String negSaid,
             Map<String, List<Evidence>> byAspect,
+            Map<Long, Review> byReview,
             Set<Long> allowed
     ) {
         List<Evidence> rows = byAspect.getOrDefault(aspect, List.of());
@@ -730,19 +748,24 @@ public class ReportComposer {
         String answer;
         List<Evidence> proof;
         if (!neg.isEmpty() && pos.isEmpty()) {
-            answer = negSaid + "，原评写到「" + quoteOf(neg.get(0)) + "」。";
+            answer = negSaid + "，原评写到「" + quoteOf(neg.get(0), byReview) + "」。";
             proof = neg;
         } else if (neg.isEmpty()) {
-            answer = posSaid + "，原评写到「" + quoteOf(pos.get(0)) + "」。";
+            answer = posSaid + "，原评写到「" + quoteOf(pos.get(0), byReview) + "」。";
             proof = pos;
         } else {
-            answer = negSaid + "，也" + posSaid + "。负向如「" + quoteOf(neg.get(0)) + "」。";
+            answer = negSaid + "，也" + posSaid + "。负向如「" + quoteOf(neg.get(0), byReview) + "」。";
             proof = all(neg, pos);
         }
         add(claims, "问：" + question + " 答：" + answer, ids(first(proof, 3), allowed));
     }
 
-    private static void addAskShip(List<ReportView.Claim> claims, Map<String, List<Evidence>> byAspect, Set<Long> allowed) {
+    private static void addAskShip(
+            List<ReportView.Claim> claims,
+            Map<String, List<Evidence>> byAspect,
+            Map<Long, Review> byReview,
+            Set<Long> allowed
+    ) {
         List<Evidence> logistics = bySentiment(byAspect.getOrDefault("物流", List.of()), "neg");
         List<Evidence> pack = bySentiment(byAspect.getOrDefault("包装", List.of()), "neg");
         List<Evidence> neg = all(logistics, pack);
@@ -757,7 +780,7 @@ public class ReportComposer {
         } else {
             which = "包装有负向";
         }
-        add(claims, "问：物流和包装有没有问题？ 答：" + which + "，原评写到「" + quoteOf(neg.get(0)) + "」。",
+        add(claims, "问：物流和包装有没有问题？ 答：" + which + "，原评写到「" + quoteOf(neg.get(0), byReview) + "」。",
                 ids(first(neg, 3), allowed));
     }
 
@@ -795,7 +818,7 @@ public class ReportComposer {
             return;
         }
         add(claims, "问：竞品被抱怨最多的是哪方面？ 答：竞品「" + pain + "」负向最集中，原评写到「"
-                + quoteOf(neg.get(0)) + "」。", ids(first(neg, 3), allowed));
+                + quoteOf(neg.get(0), byReview) + "」。", ids(first(neg, 3), allowed));
     }
 
     private static List<Evidence> mentions(List<Evidence> rows, Map<Long, Review> byReview, String word) {
@@ -913,11 +936,75 @@ public class ReportComposer {
         return best;
     }
 
-    private static String quoteOf(Evidence row) {
-        if (StringUtils.hasText(row.getQuote())) {
+    private static String quoteOf(Evidence row, Map<Long, Review> byReview) {
+        if (row != null && StringUtils.hasText(row.getQuote()) && !jargonQuote(row.getQuote())) {
             return row.getQuote().trim();
         }
+        Review review = (row == null || byReview == null) ? null : byReview.get(row.getReviewId());
+        String content = review == null ? null : review.getContent();
+        String fromContent = clipAround(content, row == null ? null : row.getAspectName());
+        if (StringUtils.hasText(fromContent)) {
+            return fromContent;
+        }
         return "见对应原评";
+    }
+
+    private static boolean jargonQuote(String quote) {
+        String value = quote.trim();
+        return "否定问题表述".equals(value)
+                || "未写明倾向".equals(value)
+                || "提到该方面但未写褒贬".equals(value);
+    }
+
+    private static String clipAround(String content, String aspect) {
+        if (!StringUtils.hasText(content)) {
+            return null;
+        }
+        String text = content.replace("\n", " ").trim();
+        String needle = StringUtils.hasText(aspect) ? aspect : "";
+        int idx = StringUtils.hasText(needle) ? text.indexOf(needle) : -1;
+        if (idx < 0) {
+            return text.length() <= 24 ? text : text.substring(0, 24);
+        }
+        int start = Math.max(0, idx - 8);
+        int end = Math.min(text.length(), idx + needle.length() + 8);
+        String snippet = text.substring(start, end).replaceAll("^[，。；;,.!?！？\\s]+|[，。；;,.!?！？\\s]+$", "");
+        return StringUtils.hasText(snippet) ? snippet : text.substring(0, Math.min(24, text.length()));
+    }
+
+    private static List<Evidence> keepCounted(List<Evidence> evidence, Map<Long, Review> byReview) {
+        if (evidence == null || evidence.isEmpty()) {
+            return List.of();
+        }
+        List<Evidence> out = new ArrayList<>();
+        for (Evidence row : evidence) {
+            if (row.getReviewId() != null && byReview.containsKey(row.getReviewId())) {
+                out.add(row);
+            }
+        }
+        return out;
+    }
+
+    private static boolean isOwnProduct(String product, Project project, String ownKey) {
+        if (!StringUtils.hasText(product)) {
+            return true;
+        }
+        List<String> names = new ArrayList<>();
+        if (StringUtils.hasText(ownKey)) {
+            names.add(ownKey);
+        }
+        if (project != null) {
+            if (StringUtils.hasText(project.getName())) {
+                names.add(project.getName());
+            }
+            if (StringUtils.hasText(project.getBrand())) {
+                names.add(project.getBrand());
+            }
+            if (StringUtils.hasText(project.getMainModel())) {
+                names.add(project.getMainModel());
+            }
+        }
+        return firstMatch(product, names) != null;
     }
 
     private static String pct(long part, long total) {

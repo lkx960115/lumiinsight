@@ -137,8 +137,21 @@ def window_polarity(text: str, keyword: str) -> tuple[str, str, float]:
     if neg_hit and not inverted:
         return "neg", neg_hit, 0.74
     if inverted:
-        return "pos", "否定问题表述", 0.68
+        return "pos", human_reason(chunk, keyword), 0.68
     return "neu", "提到该方面但未写褒贬", 0.58
+
+
+def human_reason(chunk: str, keyword: str) -> str:
+    text = (chunk or "").replace("\n", " ").strip()
+    if not text:
+        return keyword
+    idx = text.find(keyword)
+    if idx < 0:
+        return text[:24]
+    start = max(0, idx - 8)
+    end = min(len(text), idx + len(keyword) + 8)
+    snippet = text[start:end].strip("，。；;,.!?！？ ")
+    return snippet or text[:24]
 
 
 def rule_aspects(content: str, aspects: list[dict[str, Any]]) -> list[dict[str, Any]]:

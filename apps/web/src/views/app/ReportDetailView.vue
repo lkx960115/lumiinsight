@@ -52,7 +52,7 @@
         <el-table-column label="对象" min-width="140">
           <template #default="{ row }">{{ row.name }}</template>
         </el-table-column>
-        <el-table-column label="原评" width="88">
+        <el-table-column label="有效评论" width="100">
           <template #default="{ row }">{{ row.volume }}</template>
         </el-table-column>
         <el-table-column label="正向" width="88">

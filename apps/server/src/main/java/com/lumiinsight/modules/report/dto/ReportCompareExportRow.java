@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 public class ReportCompareExportRow {
     @ExcelProperty("对象")
     private String name;
-    @ExcelProperty("原评")
+    @ExcelProperty("有效评论")
     private Long volume;
     @ExcelProperty("正向")
     private Long pos;

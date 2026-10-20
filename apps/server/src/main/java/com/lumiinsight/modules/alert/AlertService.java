@@ -172,17 +172,43 @@ public class AlertService {
         }
         hits.sort(Comparator
                 .comparingInt((Candidate item) -> KIND_VOLUME.equals(item.kind) ? 0 : 1)
+                .thenComparingInt(item -> KIND_NEW.equals(item.kind) ? 0 : 1)
                 .thenComparingInt(item -> -(item.recentNeg - item.previousNeg))
                 .thenComparingInt(item -> -item.recentNeg));
         List<AlertView> out = new ArrayList<>();
-        for (Candidate item : hits) {
-            if (out.size() >= MAX_ALERTS) {
-                break;
-            }
+        for (Candidate item : pickAlerts(hits)) {
             AlertView view = toView(item);
             if (view != null) {
                 out.add(view);
             }
+        }
+        return out;
+    }
+
+    private static List<Candidate> pickAlerts(List<Candidate> hits) {
+        List<Candidate> rest = new ArrayList<>(hits);
+        List<Candidate> out = new ArrayList<>();
+        for (String kind : List.of(KIND_VOLUME, KIND_NEW, KIND_SPIKE)) {
+            Candidate found = null;
+            for (Candidate item : rest) {
+                if (kind.equals(item.kind)) {
+                    found = item;
+                    break;
+                }
+            }
+            if (found != null) {
+                out.add(found);
+                rest.remove(found);
+            }
+            if (out.size() >= MAX_ALERTS) {
+                return out;
+            }
+        }
+        for (Candidate item : rest) {
+            if (out.size() >= MAX_ALERTS) {
+                break;
+            }
+            out.add(item);
         }
         return out;
     }

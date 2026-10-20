@@ -114,10 +114,17 @@ public class EvidenceService {
     }
 
     private static String quoteOf(String reason, String content) {
-        if (StringUtils.hasText(reason)) {
-            return trim(reason, 120);
+        if (StringUtils.hasText(reason) && !jargonQuote(reason)) {
+            return trim(reason, 24);
         }
-        return trim(content, 120);
+        return trim(content, 24);
+    }
+
+    private static boolean jargonQuote(String reason) {
+        String value = reason.trim();
+        return "否定问题表述".equals(value)
+                || "未写明倾向".equals(value)
+                || "提到该方面但未写褒贬".equals(value);
     }
 
     private static String trim(String text, int max) {

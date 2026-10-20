@@ -109,7 +109,7 @@ final class ReportPdfWriter {
             return;
         }
         for (ReportView.CompareRow row : section.getCompare()) {
-            cursor.block(nullToEmpty(row.getName()) + "  原评 " + row.getVolume()
+            cursor.block(nullToEmpty(row.getName()) + "  有效评论 " + row.getVolume()
                     + "，正向 " + row.getPos() + "，负向 " + row.getNeg()
                     + "，中性 " + row.getNeu() + "。痛点 " + dash(row.getTopPain()) + "。", BODY, INK, 15);
         }

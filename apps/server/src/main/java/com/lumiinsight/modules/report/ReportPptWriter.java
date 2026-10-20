@@ -90,7 +90,7 @@ final class ReportPptWriter {
         List<String> lines = new ArrayList<>();
         if (section.getCompare() != null) {
             for (ReportView.CompareRow row : section.getCompare()) {
-                lines.add(nullToEmpty(row.getName()) + "  原评 " + row.getVolume()
+                lines.add(nullToEmpty(row.getName()) + "  有效评论 " + row.getVolume()
                         + "，正向 " + row.getPos() + "，负向 " + row.getNeg()
                         + "，中性 " + row.getNeu() + "。痛点 " + dash(row.getTopPain()) + "。");
             }
