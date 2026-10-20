@@ -11,6 +11,9 @@ import com.lumiinsight.modules.audit.AuditService;
 import com.lumiinsight.modules.evidence.EvidenceService;
 import com.lumiinsight.modules.evidence.dto.EvidenceView;
 import com.lumiinsight.modules.evidence.entity.Evidence;
+import com.lumiinsight.modules.llm.LlmRuntimeService;
+import com.lumiinsight.modules.llm.LlmUsageService;
+import com.lumiinsight.modules.pipeline.WorkerClient;
 import com.lumiinsight.modules.project.ProjectService;
 import com.lumiinsight.modules.project.entity.Project;
 import com.lumiinsight.modules.project.mapper.ProjectMapper;
@@ -21,12 +24,15 @@ import com.lumiinsight.modules.review.ReviewQueryService;
 import com.lumiinsight.modules.review.dto.ProjectOverview;
 import com.lumiinsight.modules.review.entity.Review;
 import com.lumiinsight.modules.review.mapper.ReviewMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,6 +44,8 @@ import java.util.stream.Collectors;
 @Service
 public class ReportService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReportService.class);
+
     private final ReportMapper reportMapper;
     private final ProjectMapper projectMapper;
     private final ProjectService projectService;
@@ -48,6 +56,9 @@ public class ReportService {
     private final ReportExporter reportExporter;
     private final ObjectMapper objectMapper;
     private final AuditService auditService;
+    private final LlmRuntimeService llmRuntimeService;
+    private final LlmUsageService llmUsageService;
+    private final WorkerClient workerClient;
 
     public ReportService(
             ReportMapper reportMapper,
@@ -59,7 +70,10 @@ public class ReportService {
             ReportComposer reportComposer,
             ReportExporter reportExporter,
             ObjectMapper objectMapper,
-            AuditService auditService
+            AuditService auditService,
+            LlmRuntimeService llmRuntimeService,
+            LlmUsageService llmUsageService,
+            WorkerClient workerClient
     ) {
         this.reportMapper = reportMapper;
         this.projectMapper = projectMapper;
@@ -71,6 +85,9 @@ public class ReportService {
         this.reportExporter = reportExporter;
         this.objectMapper = objectMapper;
         this.auditService = auditService;
+        this.llmRuntimeService = llmRuntimeService;
+        this.llmUsageService = llmUsageService;
+        this.workerClient = workerClient;
     }
 
     public ReportView generateForProject(Long projectId) {
@@ -159,8 +176,13 @@ public class ReportService {
                         .eq(Review::getCounted, 1)
         );
         ProjectOverview overview = reviewQueryService.overviewUnchecked(projectId);
-        notifyProgress(progress, "正在生成报告（第 2 / 3 步）");
+        notifyProgress(progress, "正在按原评写摘要和建议（第 2 / 3 步）");
         List<ReportView.Section> sections = reportComposer.compose(project, overview, evidence, countedReviews);
+        sections = keepOnlyProven(sections, evidence);
+        if (sections.isEmpty()) {
+            throw BizException.of("NO_EVIDENCE", "结论没有可用原评，不能生成报告。");
+        }
+        sections = polishWithModel(projectId, sections, evidence);
         sections = keepOnlyProven(sections, evidence);
         if (sections.isEmpty()) {
             throw BizException.of("NO_EVIDENCE", "结论没有可用原评，不能生成报告。");
@@ -182,6 +204,153 @@ public class ReportService {
         if (progress != null && message != null) {
             progress.accept(message);
         }
+    }
+
+    private List<ReportView.Section> polishWithModel(
+            Long projectId,
+            List<ReportView.Section> sections,
+            List<Evidence> evidence
+    ) {
+        Map<String, Object> spec = llmRuntimeService.workerSpec("report_summary");
+        if (spec == null) {
+            return sections;
+        }
+        List<Map<String, Object>> drafts = new ArrayList<>();
+        Set<Long> cited = new LinkedHashSet<>();
+        for (ReportView.Section section : sections) {
+            if (!"summary".equals(section.getCode()) && !"advice".equals(section.getCode())) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("code", section.getCode());
+            List<Map<String, Object>> claims = new ArrayList<>();
+            if (section.getClaims() != null) {
+                for (ReportView.Claim claim : section.getClaims()) {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("text", claim.getText());
+                    item.put("evidenceIds", claim.getEvidenceIds() == null ? List.of() : claim.getEvidenceIds());
+                    claims.add(item);
+                    if (claim.getEvidenceIds() != null) {
+                        cited.addAll(claim.getEvidenceIds());
+                    }
+                }
+            }
+            row.put("claims", claims);
+            drafts.add(row);
+        }
+        if (drafts.isEmpty()) {
+            return sections;
+        }
+        Map<Long, Evidence> byId = evidence.stream()
+                .filter(row -> row.getId() != null)
+                .collect(Collectors.toMap(Evidence::getId, Function.identity(), (a, b) -> a));
+        List<Map<String, Object>> snippets = new ArrayList<>();
+        for (Long id : cited) {
+            Evidence row = byId.get(id);
+            if (row == null) {
+                continue;
+            }
+            Map<String, Object> snippet = new LinkedHashMap<>();
+            snippet.put("id", row.getId());
+            snippet.put("aspect", row.getAspectName());
+            snippet.put("quote", StringUtils.hasText(row.getQuote()) ? row.getQuote() : "");
+            snippets.add(snippet);
+            if (snippets.size() >= 16) {
+                break;
+            }
+        }
+        try {
+            Map<String, Object> result = workerClient.reportSummary(projectId, drafts, snippets, spec);
+            boolean ok = result != null && result.get("sections") instanceof List<?> list && !list.isEmpty();
+            llmUsageService.record(null, projectId, spec, result, ok, ok ? "ok" : "摘要无结果");
+            if (!ok) {
+                return sections;
+            }
+            return applyPolish(sections, result, byId.keySet());
+        } catch (Exception e) {
+            log.info("报告摘要未走模型 projectId={}：{}", projectId, e.getMessage());
+            llmUsageService.record(null, projectId, spec, null, false, "超时或调用失败");
+            return sections;
+        }
+    }
+
+    private static List<ReportView.Section> applyPolish(
+            List<ReportView.Section> sections,
+            Map<String, Object> result,
+            Set<Long> allowed
+    ) {
+        Object raw = result.get("sections");
+        if (!(raw instanceof List<?> rows)) {
+            return sections;
+        }
+        Map<String, List<ReportView.Claim>> byCode = new LinkedHashMap<>();
+        for (Object row : rows) {
+            if (!(row instanceof Map<?, ?> map)) {
+                continue;
+            }
+            String code = String.valueOf(map.get("code") == null ? "" : map.get("code")).trim();
+            if (!"summary".equals(code) && !"advice".equals(code)) {
+                continue;
+            }
+            Object claimsRaw = map.get("claims");
+            if (!(claimsRaw instanceof List<?> claims)) {
+                continue;
+            }
+            List<ReportView.Claim> proven = new ArrayList<>();
+            for (Object claimRaw : claims) {
+                if (!(claimRaw instanceof Map<?, ?> claimMap)) {
+                    continue;
+                }
+                String text = claimMap.get("text") == null ? "" : String.valueOf(claimMap.get("text")).trim();
+                List<Long> ids = readIds(claimMap.get("evidenceIds")).stream()
+                        .filter(allowed::contains)
+                        .distinct()
+                        .limit(3)
+                        .toList();
+                if (!StringUtils.hasText(text) || "null".equals(text) || ids.isEmpty()) {
+                    continue;
+                }
+                proven.add(ReportView.Claim.builder().text(text).evidenceIds(ids).build());
+            }
+            if (!proven.isEmpty()) {
+                byCode.put(code, proven);
+            }
+        }
+        if (byCode.isEmpty()) {
+            return sections;
+        }
+        List<ReportView.Section> out = new ArrayList<>();
+        for (ReportView.Section section : sections) {
+            List<ReportView.Claim> rewritten = byCode.get(section.getCode());
+            if (rewritten == null) {
+                out.add(section);
+                continue;
+            }
+            out.add(ReportView.Section.builder()
+                    .code(section.getCode())
+                    .title(section.getTitle())
+                    .claims(rewritten)
+                    .compare(section.getCompare())
+                    .aspectCompare(section.getAspectCompare())
+                    .monthCompare(section.getMonthCompare())
+                    .build());
+        }
+        return out;
+    }
+
+    private static List<Long> readIds(Object raw) {
+        List<Long> out = new ArrayList<>();
+        if (!(raw instanceof List<?> list)) {
+            return out;
+        }
+        for (Object item : list) {
+            try {
+                out.add(Long.valueOf(String.valueOf(item)));
+            } catch (NumberFormatException ignored) {
+                // skip
+            }
+        }
+        return out;
     }
 
     private List<ReportView.Section> keepOnlyProven(List<ReportView.Section> sections, List<Evidence> evidence) {

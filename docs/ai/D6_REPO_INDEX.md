@@ -8,7 +8,7 @@ lumiinsight/
 ├── pnpm-workspace.yaml
 ├── apps/server/          Spring Boot 3.3 / 启动类 LumiInsightApplication
 ├── apps/web/             Vue3 + Vite + Element Plus
-├── apps/ai-worker/       清洗/分析/问原评/预警：/health、POST /v1/jobs/clean、analyze、embed、ask、alert
+├── apps/ai-worker/       清洗/分析/问原评/预警/报告摘要：/health、POST /v1/jobs/clean、analyze、embed、ask、alert、report_summary
 ├── eval/fixtures/        sample-reviews.csv（120 条）
 ├── docs/演示说明.md
 └── docs/ai/CODE_PROGRESS.md
@@ -38,7 +38,7 @@ lumiinsight/
 | 评论列表 | `modules/review` |
 | 模型配置 | `modules/llm` |
 | 用量 | 前端 `/admin/usage`（`UsageView.vue`），接口仍走模型配置权限 |
-| 报告 | `modules/report`；前端 `/app/reports`；含问原评一节；导出表格 / 文稿 / PDF |
+| 报告 | `modules/report`；前端 `/app/reports`；摘要建议可走模型；含问原评一节；导出表格 / 文稿 / PDF |
 | 问原评 | `modules/ask`；Worker `POST /v1/jobs/ask`；前端 `AskDock.vue`（仅项目详情/报告） |
 | 口碑预警 | `modules/alert`；Worker `POST /v1/jobs/alert`；项目详情「口碑预警」（负向变多 / 新槽点 / 声量骤降） |
 | 流水线 / Worker 客户端 | `modules/pipeline`；Worker：`apps/ai-worker/app/main.py` |

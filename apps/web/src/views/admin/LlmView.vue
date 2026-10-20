@@ -196,7 +196,7 @@ const canEdit = computed(() => auth.has('admin:llm:edit'))
 const PURPOSE: Record<string, { name: string; hint: string }> = {
   absa: { name: '方面情感', hint: '把评论拆成方面、正负向和原因' },
   sentiment: { name: '整句情感', hint: '整条评论的正负向' },
-  report_summary: { name: '报告摘要', hint: '基于统计和原声写摘要，不能空编' },
+  report_summary: { name: '报告摘要', hint: '生成报告时改写摘要和建议，失败仍用规则稿，不能空编' },
   embedding: { name: '向量检索', hint: '按意思找原评，须配 embedding 模型' },
   spam_classify: { name: '去水辅助', hint: '可选；清洗仍以规则为主' },
   ask: { name: '问原评', hint: '只根据本项目原评回答，无依据不编' },

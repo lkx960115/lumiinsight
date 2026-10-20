@@ -45,6 +45,7 @@
 
     <el-card v-for="section in sections" :key="section.code" class="block">
       <template #header>{{ section.title }}</template>
+      <p v-if="section.code === 'summary' || section.code === 'advice'" class="muted">按本项目原评写成。配了摘要模型时会改写成顾问口吻，没有依据的句子不会出现。</p>
       <p v-if="section.code === 'compete'" class="muted">按项目里的竞品名称和评论商品名对照。每个竞品单独一行，没有对应原评的不进表。下面按方面看谁负向更集中，再按月看谁在变差。每句都能查看原评。改完竞品后请重新生成报告。</p>
       <p v-if="section.code === 'ask'" class="muted">按现成问法对照本项目原评写成。没有足够原评的问题不会出现。右侧仍可现场再问。</p>
       <el-table v-if="section.compare && section.compare.length" :data="section.compare" class="mt" empty-text="还没有对照数据。">
