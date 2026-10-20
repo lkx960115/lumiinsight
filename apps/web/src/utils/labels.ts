@@ -151,10 +151,16 @@ export function friendlyMessage(raw?: string | null) {
 export function importRemark(row: { successRows?: number; failRows?: number; status?: string; message?: string }) {
   const ok = Number(row.successRows) || 0
   const fail = Number(row.failRows) || 0
-  if (row.status === 'FAILED') return friendlyMessage(row.message)
-  if (fail > 0) return `${ok} 条成功，${fail} 条失败`
+  const msg = friendlyMessage(row.message)
+  if (row.status === 'FAILED') return msg
+  const useful = Boolean(msg && msg !== '—' && msg !== '导入完成')
+  if (fail > 0) return useful ? msg : `${ok} 条成功，丢掉 ${fail} 行`
+  if (useful) {
+    const rest = msg.replace(/^导入完成。/, '')
+    return ok > 0 ? `${ok} 条。${rest}` : rest
+  }
   if (ok > 0) return `${ok} 条`
-  return friendlyMessage(row.message)
+  return msg
 }
 
 export function pipelineRemark(message?: string | null) {

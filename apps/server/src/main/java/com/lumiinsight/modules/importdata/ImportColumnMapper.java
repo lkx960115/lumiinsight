@@ -4,10 +4,12 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 final class ImportColumnMapper {
@@ -118,11 +120,99 @@ final class ImportColumnMapper {
     }
 
     static String missingContentMessage() {
-        return "没有找到评论原文列。请用「原文」，或商家导出里的「评价内容」「评论内容」。也可下载灯鉴样例。";
+        return missingContentMessage(null);
+    }
+
+    static String missingContentMessage(String[] heads) {
+        String preview = headerPreview(heads);
+        if (!StringUtils.hasText(preview)) {
+            return "没有找到评论原文列。请用「原文」，或商家导出里的「评价内容」「评论内容」。也可下载灯鉴样例。";
+        }
+        return "没有找到评论原文列。当前表头是：" + preview
+                + "。请把评价那一列改成「评价内容」或「评论内容」，也可下载灯鉴样例。";
     }
 
     static String missingPlatformMessage() {
-        return "平台不能为空。请加「平台」列，或把文件名带上京东、淘宝、小红书或抖音。";
+        return "没有平台。请加「平台」列，或把文件名带上京东、淘宝、小红书或抖音";
+    }
+
+    static String emptyRowsMessage() {
+        return "没有读取到数据行。请确认第一行是列名，下面是评价内容。";
+    }
+
+    static String mappingNote(String[] heads, Map<Field, Integer> index, String filename) {
+        List<String> parts = new ArrayList<>();
+        if (index == null || !index.containsKey(Field.PLATFORM)) {
+            String inferred = inferPlatformFromFilename(filename);
+            if (inferred != null) {
+                parts.add("没有平台列，已按文件名认成" + platformLabel(inferred));
+            }
+        }
+        String extra = unrecognizedNote(heads, index);
+        if (StringUtils.hasText(extra)) {
+            parts.add(extra);
+        }
+        if (parts.isEmpty()) {
+            return null;
+        }
+        return String.join("。", parts) + "。";
+    }
+
+    static String unrecognizedNote(String[] heads, Map<Field, Integer> index) {
+        if (heads == null) {
+            return null;
+        }
+        Set<Integer> used = new HashSet<>();
+        if (index != null) {
+            used.addAll(index.values());
+        }
+        List<String> extra = new ArrayList<>();
+        for (int i = 0; i < heads.length; i++) {
+            if (used.contains(i) || !StringUtils.hasText(heads[i])) {
+                continue;
+            }
+            extra.add(heads[i].trim());
+            if (extra.size() >= 6) {
+                break;
+            }
+        }
+        if (extra.isEmpty()) {
+            return null;
+        }
+        return "未认到的列：" + String.join("、", extra) + "（已忽略）";
+    }
+
+    static String headerPreview(String[] heads) {
+        if (heads == null) {
+            return "";
+        }
+        List<String> names = new ArrayList<>();
+        for (String head : heads) {
+            if (!StringUtils.hasText(head)) {
+                continue;
+            }
+            names.add(head.trim());
+            if (names.size() >= 8) {
+                break;
+            }
+        }
+        return String.join("、", names);
+    }
+
+    static String platformLabel(String code) {
+        if ("xiaohongshu".equals(code)) {
+            return "小红书";
+        }
+        if ("jd".equals(code)) {
+            return "京东";
+        }
+        if ("taobao".equals(code)) {
+            return "淘宝";
+        }
+        if ("douyin".equals(code)) {
+            return "抖音";
+        }
+        return code == null ? "" : code;
     }
 
     private static void bind(Field field, String... names) {

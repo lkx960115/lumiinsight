@@ -62,7 +62,7 @@
 
     <el-card class="block">
       <template #header>导入评论（Excel / CSV）</template>
-      <p class="muted">从京东、淘宝、抖店、小红书商家后台导出评价表再导入。认「评价内容」「评论内容」等常见列名；没有平台列时，把文件名带上「京东」或「淘宝」即可。不会在这里抓取平台。用样例时，先把主型号填成「演示吸顶灯」、竞品填成「星辉竞品灯」，再点「下载样例」一次导入。用 Excel 打开请重新下载样例，不要把乱码文件再导入。</p>
+      <p class="muted">从京东、淘宝、抖店、小红书商家后台导出评价表再导入。认「评价内容」「评论内容」等常见列名；没有平台列时，把文件名带上「京东」或「淘宝」即可。列名对不上或某行丢掉时，状态下方会写明原因，可下载失败行。不会在这里抓取平台。用样例时，先把主型号填成「演示吸顶灯」、竞品填成「星辉竞品灯」，再点「下载样例」一次导入。用 Excel 打开请重新下载样例，不要把乱码文件再导入。</p>
       <div class="toolbar">
         <el-button text @click="importHelpVisible = true">各平台怎么导出</el-button>
         <el-button text tag="a" href="/sample-reviews.csv" download>下载样例</el-button>
@@ -636,7 +636,7 @@ async function downloadErrors(jobId: number) {
   const url = URL.createObjectURL(resp.data)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'import-errors.csv'
+  a.download = '失败行.csv'
   a.click()
   URL.revokeObjectURL(url)
 }

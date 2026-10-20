@@ -41,7 +41,7 @@
 
     <el-card class="block">
       <template #header>若出错</template>
-      <p class="muted">导入失败可下载失败行。分析失败看任务说明后重试。报告没有证据时，请先完成分析再生成。导出失败时重启 Java 后再试。PDF 需要本机有中文字体。</p>
+      <p class="muted">导入失败时状态会写清哪一列没认上、丢掉了哪几行，可下载失败行。分析失败看任务说明后重试。报告没有证据时，请先完成分析再生成。导出失败时重启 Java 后再试。PDF 需要本机有中文字体。</p>
     </el-card>
   </div>
 </template>

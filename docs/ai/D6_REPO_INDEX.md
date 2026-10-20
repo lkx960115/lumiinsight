@@ -34,7 +34,7 @@ lumiinsight/
 | 登录 JWT | `modules/auth` |
 | RBAC / 首次管理员 | `modules/sys`（密码仅启动日志打印） |
 | 项目 | `modules/project` |
-| 导入 | `modules/importdata`（认灯鉴模板与商家后台导出列名） |
+| 导入 | `modules/importdata`（认灯鉴模板与商家后台导出列名；失败写清哪一列没认上、丢掉哪几行） |
 | 评论列表 | `modules/review` |
 | 模型配置 | `modules/llm` |
 | 用量 | 前端 `/admin/usage`（`UsageView.vue`），接口仍走模型配置权限 |

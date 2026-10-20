@@ -31,7 +31,7 @@ public final class PlatformNormalizer {
 
     public static String normalize(String raw) {
         if (raw == null || raw.isBlank()) {
-            throw BizException.of("IMPORT_INVALID", "平台不能为空");
+            throw BizException.of("IMPORT_INVALID", ImportColumnMapper.missingPlatformMessage());
         }
         String key = raw.trim().toLowerCase(Locale.ROOT);
         String mapped = ALIAS.get(key);
@@ -39,7 +39,7 @@ public final class PlatformNormalizer {
             mapped = ALIAS.get(raw.trim());
         }
         if (mapped == null) {
-            throw BizException.of("IMPORT_INVALID", "不支持的平台: " + raw);
+            throw BizException.of("IMPORT_INVALID", "平台「" + raw + "」无法识别。请填京东、淘宝、小红书或抖音");
         }
         return mapped;
     }

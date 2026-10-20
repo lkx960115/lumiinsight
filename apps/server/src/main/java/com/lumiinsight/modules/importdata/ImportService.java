@@ -150,21 +150,25 @@ public class ImportService {
         importJobMapper.updateById(job);
         try {
             byte[] bytes = objectStorage.get(job.getObjectKey());
-            List<ReviewImportRow> rows = parse(job.getFilename(), bytes);
+            Parsed parsed = parse(job.getFilename(), bytes);
             int success = 0;
             int fail = 0;
             List<ReviewImportRow> failed = new ArrayList<>();
-            for (ReviewImportRow row : rows) {
+            for (ReviewImportRow row : parsed.rows) {
                 try {
                     persist(job, row);
                     success++;
+                } catch (IllegalArgumentException e) {
+                    fail++;
+                    row.setError(plainError(e.getMessage()));
+                    failed.add(row);
                 } catch (Exception e) {
                     fail++;
-                    row.setError(e.getMessage());
+                    row.setError("这一行无法导入");
                     failed.add(row);
                 }
             }
-            job.setTotalRows(rows.size());
+            job.setTotalRows(parsed.rows.size());
             job.setSuccessRows(success);
             job.setFailRows(fail);
             if (!failed.isEmpty()) {
@@ -173,7 +177,11 @@ public class ImportService {
                 job.setErrorObjectKey(errKey);
             }
             job.setStatus("READY");
-            job.setMessage(fail == 0 ? "导入完成" : "部分行失败，请下载错误报告");
+            job.setMessage(resultMessage(
+                    success,
+                    failed,
+                    ImportColumnMapper.mappingNote(parsed.heads, parsed.index, job.getFilename())
+            ));
             importJobMapper.updateById(job);
         } catch (BizException e) {
             job.setStatus("FAILED");
@@ -181,14 +189,14 @@ public class ImportService {
             importJobMapper.updateById(job);
         } catch (Exception e) {
             job.setStatus("FAILED");
-            job.setMessage("导入失败，请检查是否为 Excel 或 CSV，且含评价内容");
+            job.setMessage("导入失败。请确认是 Excel 或 CSV，并且有「评价内容」或「评论内容」列。也可下载灯鉴样例。");
             importJobMapper.updateById(job);
         }
     }
 
     private void persist(ImportJob job, ReviewImportRow row) throws Exception {
         if (!StringUtils.hasText(row.getContent())) {
-            throw new IllegalArgumentException("原文不能为空");
+            throw new IllegalArgumentException("没有评价内容");
         }
         String platformRaw = row.getPlatform();
         if (!StringUtils.hasText(platformRaw)) {
@@ -198,7 +206,7 @@ public class ImportService {
             if (!StringUtils.hasText(platformRaw)) {
                 throw new IllegalArgumentException(ImportColumnMapper.missingPlatformMessage());
             }
-            throw new IllegalArgumentException("不支持的平台: " + platformRaw + "。请填京东、淘宝、小红书或抖音");
+            throw new IllegalArgumentException("平台「" + platformRaw + "」无法识别。请填京东、淘宝、小红书或抖音");
         }
         String platform = PlatformNormalizer.normalize(platformRaw);
         String content = row.getContent().trim();
@@ -210,7 +218,7 @@ public class ImportService {
                 .eq(Review::getPlatform, platform)
                 .eq(Review::getReviewId, reviewId));
         if (exists != null && exists > 0) {
-            throw new IllegalArgumentException("重复评论（同平台+评论ID）");
+            throw new IllegalArgumentException("与已有评论重复");
         }
         Review review = new Review();
         review.setProjectId(job.getProjectId());
@@ -245,7 +253,7 @@ public class ImportService {
         reviewMapper.insert(review);
     }
 
-    private List<ReviewImportRow> parse(String filename, byte[] bytes) {
+    private Parsed parse(String filename, byte[] bytes) {
         String lower = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
         if (lower.endsWith(".csv")) {
             return parseCsv(bytes);
@@ -253,7 +261,7 @@ public class ImportService {
         return parseExcel(bytes);
     }
 
-    private List<ReviewImportRow> parseExcel(byte[] bytes) {
+    private Parsed parseExcel(byte[] bytes) {
         List<Map<Integer, String>> grid = new ArrayList<>();
         try {
             EasyExcel.read(new ByteArrayInputStream(bytes), new AnalysisEventListener<Map<Integer, String>>() {
@@ -278,19 +286,19 @@ public class ImportService {
         return rowsFromLines(lines);
     }
 
-    private List<ReviewImportRow> parseCsv(byte[] bytes) {
-        List<ReviewImportRow> utf = readCsv(bytes, StandardCharsets.UTF_8);
+    private Parsed parseCsv(byte[] bytes) {
+        Parsed utf = readCsv(bytes, StandardCharsets.UTF_8);
         if (utf != null) {
             return utf;
         }
-        List<ReviewImportRow> gbk = readCsv(bytes, Charset.forName("GB18030"));
+        Parsed gbk = readCsv(bytes, Charset.forName("GB18030"));
         if (gbk != null) {
             return gbk;
         }
-        throw BizException.of("IMPORT_INVALID", ImportColumnMapper.missingContentMessage());
+        throw BizException.of("IMPORT_INVALID", ImportColumnMapper.missingContentMessage(peekHeads(bytes)));
     }
 
-    private List<ReviewImportRow> readCsv(byte[] bytes, Charset charset) {
+    private Parsed readCsv(byte[] bytes, Charset charset) {
         List<String[]> lines = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bytes), charset))) {
             String line;
@@ -313,10 +321,11 @@ public class ImportService {
         return rowsFromLines(lines);
     }
 
-    private List<ReviewImportRow> rowsFromLines(List<String[]> lines) {
+    private Parsed rowsFromLines(List<String[]> lines) {
         int headerAt = ImportColumnMapper.headerRow(lines);
         if (headerAt < 0) {
-            throw BizException.of("IMPORT_INVALID", ImportColumnMapper.missingContentMessage());
+            String[] preview = lines == null || lines.isEmpty() ? null : lines.get(0);
+            throw BizException.of("IMPORT_INVALID", ImportColumnMapper.missingContentMessage(preview));
         }
         String[] heads = lines.get(headerAt);
         Map<ImportColumnMapper.Field, Integer> index = ImportColumnMapper.index(heads);
@@ -337,9 +346,9 @@ public class ImportService {
             rows.add(row);
         }
         if (rows.isEmpty()) {
-            throw BizException.of("IMPORT_INVALID", "没有读取到数据行");
+            throw BizException.of("IMPORT_INVALID", ImportColumnMapper.emptyRowsMessage());
         }
-        return rows;
+        return new Parsed(rows, heads, index);
     }
 
     private static String[] cellsOf(Map<Integer, String> data) {
@@ -378,10 +387,13 @@ public class ImportService {
 
     private byte[] toErrorCsv(List<ReviewImportRow> failed) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        String header = "行号,平台,原文,错误\n";
-        out.writeBytes(header.getBytes(StandardCharsets.UTF_8));
+        out.writeBytes("\uFEFF".getBytes(StandardCharsets.UTF_8));
+        out.writeBytes("行号,原因,原文,平台\n".getBytes(StandardCharsets.UTF_8));
         for (ReviewImportRow row : failed) {
-            String line = row.getRowIndex() + "," + csv(row.getPlatform()) + "," + csv(row.getContent()) + "," + csv(row.getError()) + "\n";
+            String line = row.getRowIndex() + ","
+                    + csv(row.getError()) + ","
+                    + csv(row.getContent()) + ","
+                    + csv(row.getPlatform()) + "\n";
             out.writeBytes(line.getBytes(StandardCharsets.UTF_8));
         }
         return out.toByteArray();
@@ -424,7 +436,7 @@ public class ImportService {
         try {
             return LocalDateTime.parse(raw.trim());
         } catch (Exception e) {
-            throw new IllegalArgumentException("时间格式无法识别: " + raw);
+            throw new IllegalArgumentException("时间「" + raw + "」无法识别。请用 2026-04-01 12:00 这种格式");
         }
     }
 
@@ -439,12 +451,137 @@ public class ImportService {
             try {
                 return (int) Math.round(Double.parseDouble(v));
             } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("点赞必须是数字");
+                throw new IllegalArgumentException("点赞「" + raw + "」不是数字");
             }
         }
     }
 
     private static String blankToNull(String v) {
         return StringUtils.hasText(v) ? v.trim() : null;
+    }
+
+    private static String[] peekHeads(byte[] bytes) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("\uFEFF")) {
+                    line = line.substring(1);
+                }
+                if (!line.isBlank()) {
+                    return splitCsv(line);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private static String resultMessage(int success, List<ReviewImportRow> failed, String mappingNote) {
+        if (failed.isEmpty()) {
+            if (!StringUtils.hasText(mappingNote)) {
+                return "导入完成";
+            }
+            return clipMsg("导入完成。" + mappingNote, 500);
+        }
+        StringBuilder sb = new StringBuilder();
+        if (success > 0) {
+            sb.append(success).append(" 条成功，");
+        }
+        sb.append("丢掉 ").append(failed.size()).append(" 行。");
+        sb.append(groupReasons(failed));
+        if (StringUtils.hasText(mappingNote) && sb.length() < 360) {
+            sb.append(mappingNote);
+        }
+        sb.append("请下载失败行。");
+        return clipMsg(sb.toString(), 500);
+    }
+
+    private static String groupReasons(List<ReviewImportRow> failed) {
+        Map<String, List<Integer>> groups = new LinkedHashMap<>();
+        for (ReviewImportRow row : failed) {
+            groups.computeIfAbsent(kindOf(row.getError()), key -> new ArrayList<>()).add(row.getRowIndex());
+        }
+        StringBuilder sb = new StringBuilder();
+        int shown = 0;
+        for (Map.Entry<String, List<Integer>> entry : groups.entrySet()) {
+            if (shown >= 3) {
+                sb.append("其余原因见失败行。");
+                break;
+            }
+            sb.append(entry.getKey())
+                    .append("（第 ")
+                    .append(joinRows(entry.getValue()))
+                    .append(" 行）。");
+            shown++;
+        }
+        return sb.toString();
+    }
+
+    private static String kindOf(String error) {
+        if (!StringUtils.hasText(error)) {
+            return "无法导入";
+        }
+        if (error.contains("没有评价内容")) {
+            return "没有评价内容";
+        }
+        if (error.contains("没有平台")) {
+            return "没有平台";
+        }
+        if (error.contains("平台") && error.contains("无法识别")) {
+            return "平台无法识别";
+        }
+        if (error.contains("重复")) {
+            return "与已有评论重复";
+        }
+        if (error.contains("时间")) {
+            return "时间无法识别";
+        }
+        if (error.contains("点赞")) {
+            return "点赞不是数字";
+        }
+        return "无法导入";
+    }
+
+    private static String joinRows(List<Integer> rows) {
+        int limit = Math.min(5, rows.size());
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < limit; i++) {
+            if (i > 0) {
+                sb.append("、");
+            }
+            sb.append(rows.get(i));
+        }
+        if (rows.size() > 5) {
+            sb.append(" 等");
+        }
+        return sb.toString();
+    }
+
+    private static String plainError(String raw) {
+        if (!StringUtils.hasText(raw) || raw.toLowerCase(Locale.ROOT).contains("exception")) {
+            return "这一行无法导入";
+        }
+        return raw.trim();
+    }
+
+    private static String clipMsg(String text, int max) {
+        String value = text == null ? "" : text.trim();
+        if (value.length() <= max) {
+            return value;
+        }
+        return value.substring(0, max - 1) + "…";
+    }
+
+    private static final class Parsed {
+        private final List<ReviewImportRow> rows;
+        private final String[] heads;
+        private final Map<ImportColumnMapper.Field, Integer> index;
+
+        private Parsed(List<ReviewImportRow> rows, String[] heads, Map<ImportColumnMapper.Field, Integer> index) {
+            this.rows = rows;
+            this.heads = heads;
+            this.index = index;
+        }
     }
 }

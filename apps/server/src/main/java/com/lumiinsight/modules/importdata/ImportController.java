@@ -42,7 +42,7 @@ public class ImportController {
     public ResponseEntity<byte[]> errors(@PathVariable Long jobId) {
         byte[] bytes = importService.downloadErrors(jobId);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=import-errors.csv")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"failed-rows.csv\"; filename*=UTF-8''%E5%A4%B1%E8%B4%A5%E8%A1%8C.csv")
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .body(bytes);
     }
