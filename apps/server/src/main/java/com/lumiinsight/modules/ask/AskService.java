@@ -1,7 +1,14 @@
 package com.lumiinsight.modules.ask;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumiinsight.common.exception.BizException;
+import com.lumiinsight.common.security.SecurityUtils;
+import com.lumiinsight.modules.ask.dto.AskTurnView;
 import com.lumiinsight.modules.ask.dto.AskView;
+import com.lumiinsight.modules.ask.entity.AskHistory;
+import com.lumiinsight.modules.ask.mapper.AskHistoryMapper;
 import com.lumiinsight.modules.evidence.SemanticReviewService;
 import com.lumiinsight.modules.evidence.dto.EvidenceView;
 import com.lumiinsight.modules.llm.LlmRuntimeService;
@@ -16,7 +23,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +35,7 @@ import java.util.Map;
 public class AskService {
 
     private static final Logger log = LoggerFactory.getLogger(AskService.class);
+    private static final int KEEP = 20;
     private static final List<String> ASPECTS = List.of(
             "亮度", "色温", "外观", "材质", "安装", "质量", "售后", "价格", "物流",
             "频闪", "寿命", "智能联动", "遥控", "防水", "包装"
@@ -36,6 +47,8 @@ public class AskService {
     private final LlmRuntimeService llmRuntimeService;
     private final LlmUsageService llmUsageService;
     private final WorkerClient workerClient;
+    private final AskHistoryMapper askHistoryMapper;
+    private final ObjectMapper objectMapper;
 
     public AskService(
             ProjectService projectService,
@@ -43,7 +56,9 @@ public class AskService {
             ReviewQueryService reviewQueryService,
             LlmRuntimeService llmRuntimeService,
             LlmUsageService llmUsageService,
-            WorkerClient workerClient
+            WorkerClient workerClient,
+            AskHistoryMapper askHistoryMapper,
+            ObjectMapper objectMapper
     ) {
         this.projectService = projectService;
         this.semanticReviewService = semanticReviewService;
@@ -51,6 +66,8 @@ public class AskService {
         this.llmRuntimeService = llmRuntimeService;
         this.llmUsageService = llmUsageService;
         this.workerClient = workerClient;
+        this.askHistoryMapper = askHistoryMapper;
+        this.objectMapper = objectMapper;
     }
 
     public AskView ask(Long projectId, String question) {
@@ -61,11 +78,13 @@ public class AskService {
         }
         List<ReviewView> hits = retrieve(projectId, text);
         if (hits.isEmpty()) {
-            return AskView.builder()
+            AskView empty = AskView.builder()
                     .answer("这批评论里还没有足够原评来回答。请先导入并完成清洗并分析。")
                     .source("empty")
                     .evidences(List.of())
                     .build();
+            save(projectId, text, empty);
+            return empty;
         }
         List<Map<String, Object>> snippets = snippetsOf(hits);
         List<Map<String, Object>> specs = llmRuntimeService.workerSpecs("ask");
@@ -99,11 +118,95 @@ public class AskService {
         if (!StringUtils.hasText(answer) || "null".equals(answer)) {
             answer = "这批评论里还没有足够原评来回答。";
         }
-        return AskView.builder()
+        AskView view = AskView.builder()
                 .answer(answer.trim())
                 .source(result == null ? "rule" : String.valueOf(result.getOrDefault("source", "rule")))
                 .evidences(evidences)
                 .build();
+        save(projectId, text, view);
+        return view;
+    }
+
+    public List<AskTurnView> history(Long projectId) {
+        projectService.requireVisible(projectId);
+        List<AskHistory> rows = askHistoryMapper.selectList(
+                new LambdaQueryWrapper<AskHistory>()
+                        .eq(AskHistory::getProjectId, projectId)
+                        .orderByDesc(AskHistory::getId)
+                        .last("LIMIT " + KEEP)
+        );
+        Collections.reverse(rows);
+        List<AskTurnView> out = new ArrayList<>();
+        for (AskHistory row : rows) {
+            out.add(AskTurnView.builder()
+                    .id(row.getId())
+                    .question(row.getQuestion())
+                    .answer(row.getAnswer())
+                    .source(row.getSource())
+                    .evidences(readEvidences(row.getEvidenceJson()))
+                    .createdAt(row.getCreatedAt())
+                    .build());
+        }
+        return out;
+    }
+
+    private void save(Long projectId, String question, AskView view) {
+        try {
+            AskHistory row = new AskHistory();
+            row.setProjectId(projectId);
+            row.setQuestion(clip(question, 200));
+            row.setAnswer(clip(view.getAnswer(), 2000));
+            row.setSource(StringUtils.hasText(view.getSource()) ? view.getSource() : "rule");
+            row.setEvidenceJson(writeEvidences(view.getEvidences()));
+            row.setCreatedBy(SecurityUtils.requireUser().getUserId());
+            row.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Shanghai")));
+            askHistoryMapper.insert(row);
+            trim(projectId);
+        } catch (Exception e) {
+            log.warn("问原评未记下 projectId={}", projectId, e);
+        }
+    }
+
+    private void trim(Long projectId) {
+        List<AskHistory> rows = askHistoryMapper.selectList(
+                new LambdaQueryWrapper<AskHistory>()
+                        .eq(AskHistory::getProjectId, projectId)
+                        .orderByDesc(AskHistory::getId)
+        );
+        if (rows.size() <= KEEP) {
+            return;
+        }
+        List<Long> drop = rows.subList(KEEP, rows.size()).stream().map(AskHistory::getId).toList();
+        askHistoryMapper.delete(new LambdaQueryWrapper<AskHistory>().in(AskHistory::getId, drop));
+    }
+
+    private String writeEvidences(List<EvidenceView> evidences) {
+        try {
+            return objectMapper.writeValueAsString(evidences == null ? List.of() : evidences);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    private List<EvidenceView> readEvidences(String json) {
+        if (!StringUtils.hasText(json)) {
+            return List.of();
+        }
+        try {
+            List<EvidenceView> rows = objectMapper.readValue(json, new TypeReference<>() {
+            });
+            return rows == null ? List.of() : rows;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static String clip(String text, int limit) {
+        String value = text == null ? "" : text.trim();
+        if (value.length() <= limit) {
+            return value;
+        }
+        return value.substring(0, limit);
     }
 
     private List<ReviewView> retrieve(Long projectId, String question) {

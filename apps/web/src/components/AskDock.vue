@@ -5,7 +5,7 @@
       <header class="ask-head">
         <div>
           <h3 id="ask-title">问原评</h3>
-          <p>只根据本项目已分析的原评回答，没有依据就不编。</p>
+          <p>只根据本项目已分析的原评回答。关掉后再打开，还能看到问过的。</p>
         </div>
         <button class="ask-close" type="button" aria-label="收起" @click="open = false">收起</button>
       </header>
@@ -22,7 +22,7 @@
         </button>
       </div>
       <div ref="threadEl" class="ask-thread">
-        <p v-if="!messages.length" class="ask-empty">点上面的现成问法，或自己问安装、色温、售后、价格。回答下面可以核对原文。</p>
+        <p v-if="!messages.length" class="ask-empty">还没有问过。点上面的现成问法，或自己问安装、色温、售后、价格。回答下面可以核对原文。</p>
         <article v-for="(item, idx) in messages" :key="idx" class="ask-turn" :class="'is-' + item.role">
           <p class="ask-bubble">{{ item.text }}</p>
           <div v-if="item.role === 'assistant' && item.evidences?.length" class="ask-evidence">
@@ -102,10 +102,10 @@ watch(
 )
 
 watch(projectId, (next, prev) => {
-  if (next !== prev) {
-    messages.value = []
-    draft.value = ''
-  }
+  if (next === prev) return
+  messages.value = []
+  draft.value = ''
+  if (next) loadHistory(next)
 })
 
 async function resolveProject() {
@@ -127,6 +127,31 @@ async function resolveProject() {
   }
   projectId.value = null
   open.value = false
+}
+
+async function loadHistory(id: number) {
+  try {
+    const { data } = await http.get(`/projects/${id}/ask`, { silent: true } as any)
+    if (projectId.value !== id) return
+    const turns: Turn[] = []
+    for (const row of data.data || []) {
+      if (row.question) {
+        turns.push({ role: 'user', text: row.question })
+      }
+      turns.push({
+        role: 'assistant',
+        text: row.answer || '这批评论里还没有足够原评来回答。',
+        evidences: row.evidences || [],
+        showEvidence: false,
+      })
+    }
+    messages.value = turns
+    await scrollThread()
+  } catch {
+    if (projectId.value === id && !messages.value.length) {
+      messages.value = []
+    }
+  }
 }
 
 async function ask(raw: string) {
