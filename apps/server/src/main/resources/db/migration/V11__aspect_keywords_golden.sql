@@ -1,0 +1,16 @@
+UPDATE aspect_dict SET keywords = '亮度,够亮,太暗,暗了,灯光亮' WHERE name = '亮度';
+UPDATE aspect_dict SET keywords = '色温,暖光,冷光,偏冷,偏暖,偏黄,忽冷忽暖' WHERE name = '色温';
+UPDATE aspect_dict SET keywords = '外观,简约,好看,颜值,造型,花哨,不太搭' WHERE name = '外观';
+UPDATE aspect_dict SET keywords = '材质,做工,用料' WHERE name = '材质';
+UPDATE aspect_dict SET keywords = '安装,安装说明,自己搞定,说明书,孔位' WHERE name = '安装';
+UPDATE aspect_dict SET keywords = '质量,扎实,做工扎实' WHERE name = '质量';
+UPDATE aspect_dict SET keywords = '售后,客服,回复及时,推诿,换货' WHERE name = '售后';
+UPDATE aspect_dict SET keywords = '价格,贵,便宜,性价比' WHERE name = '价格';
+UPDATE aspect_dict SET keywords = '物流,快递,发货慢' WHERE name = '物流';
+UPDATE aspect_dict SET keywords = '频闪,护眼,闪烁,刺眼' WHERE name = '频闪';
+UPDATE aspect_dict SET keywords = '寿命,耐用' WHERE name = '寿命';
+UPDATE aspect_dict SET keywords = '智能联动,掉线,智能' WHERE name = '智能联动';
+UPDATE aspect_dict SET keywords = '遥控,遥控器,失灵,配对' WHERE name = '遥控';
+UPDATE aspect_dict SET keywords = '防水' WHERE name = '防水';
+UPDATE aspect_dict SET keywords = '包装,包装完好,简陋,划痕' WHERE name = '包装';
+UPDATE aspect_dict SET keywords = NULL WHERE name = '其它';
