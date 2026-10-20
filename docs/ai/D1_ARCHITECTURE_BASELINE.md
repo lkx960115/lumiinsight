@@ -20,12 +20,12 @@ Vue ──REST/JWT──► Spring Boot ──HTTP──► FastAPI Worker ─�
 ## 2. 技术栈（固定）
 
 | 层 | 技术 | 约束 |
-|----|------|------|
+|----|------|-----|
 | 前端 | Vue3 + Vite + TS + Element Plus | 禁止 React；同一工程两套路由 |
 | 后端 | JDK17 + Spring Boot 3 + MyBatis-Plus | 禁止无确认上 Boot 4 / 微服务拆分 |
 | Worker | Python 3.11 + FastAPI | NLP/LLM 调用可在此 |
 | LLM | 后台多提供方，`openai_compat` | **禁止**写死单一厂商 SDK 为唯一路径 |
-| 向量 | Qdrant | 三周内可降级 |
+| 向量 | Qdrant | 可降级 |
 | 构建 | 前 pnpm；后 Maven；Worker uv/pip | |
 
 ## 3. 分层（代码周必须落入）
