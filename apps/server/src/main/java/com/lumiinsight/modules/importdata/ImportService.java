@@ -156,7 +156,9 @@ public class ImportService {
             List<ReviewImportRow> failed = new ArrayList<>();
             for (ReviewImportRow row : parsed.rows) {
                 try {
-                    persist(job, row);
+                    if (writeRow(job, row) == WriteResult.DUPLICATE) {
+                        throw new IllegalArgumentException("与已有评论重复");
+                    }
                     success++;
                 } catch (IllegalArgumentException e) {
                     fail++;
@@ -194,7 +196,16 @@ public class ImportService {
         }
     }
 
-    private void persist(ImportJob job, ReviewImportRow row) throws Exception {
+    public List<ReviewImportRow> parseRows(String filename, byte[] bytes) {
+        return parse(filename, bytes).rows;
+    }
+
+    public enum WriteResult {
+        INSERTED,
+        DUPLICATE
+    }
+
+    public WriteResult writeRow(ImportJob job, ReviewImportRow row) throws Exception {
         if (!StringUtils.hasText(row.getContent())) {
             throw new IllegalArgumentException("没有评价内容");
         }
@@ -218,7 +229,7 @@ public class ImportService {
                 .eq(Review::getPlatform, platform)
                 .eq(Review::getReviewId, reviewId));
         if (exists != null && exists > 0) {
-            throw new IllegalArgumentException("与已有评论重复");
+            return WriteResult.DUPLICATE;
         }
         Review review = new Review();
         review.setProjectId(job.getProjectId());
@@ -251,6 +262,7 @@ public class ImportService {
         }
         review.setRawPayload(objectMapper.writeValueAsString(raw));
         reviewMapper.insert(review);
+        return WriteResult.INSERTED;
     }
 
     private Parsed parse(String filename, byte[] bytes) {

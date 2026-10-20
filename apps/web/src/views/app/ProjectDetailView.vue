@@ -34,7 +34,7 @@
       <template #header>口碑预警</template>
       <p class="muted">对照最近一个月和上一月。方面负向突然变多、新出现的槽点、有效评论明显变少，会出现在这里。每次对照的结论和原评会留在本项目，方便复盘。没有评论时间时无法对照。</p>
       <div v-loading="alertsLoading">
-        <p v-if="!alertsLoading && !alerts.length" class="muted">最近没有需要盯的变化。请先导入带时间的评论并完成清洗并分析。</p>
+        <p v-if="!alertsLoading && !alerts.length" class="muted">最近没有需要盯的变化。请先同步评价并完成清洗并分析。</p>
         <div v-for="item in alerts" :key="(item.kind || 'neg_spike') + ':' + (item.aspect || '') + ':' + (item.recentLabel || '')" class="report-claim">
           <p>{{ item.summary }}</p>
           <div class="row-actions">
@@ -61,17 +61,40 @@
     </el-card>
 
     <el-card class="block">
-      <template #header>导入评论（Excel / CSV）</template>
-      <p class="muted">从京东、淘宝、抖店、小红书商家后台导出评价表再导入。认「评价内容」「评论内容」等常见列名；没有平台列时，把文件名带上「京东」或「淘宝」即可。列名对不上或某行丢掉时，状态下方会写明原因，可下载失败行。不会在这里抓取平台。用样例时，先把主型号填成「演示吸顶灯」、竞品填成「星辉竞品灯」，再点「下载样例」一次导入。用 Excel 打开请重新下载样例，不要把乱码文件再导入。</p>
+      <template #header>店铺同步</template>
+      <p class="muted">已连接京东、淘宝、抖音、小红书本店。点同步拉取最新评价；完成后请点清洗并分析。也可以导入评价表。</p>
       <div class="toolbar">
-        <el-button text @click="importHelpVisible = true">各平台怎么导出</el-button>
-        <el-button text tag="a" href="/sample-reviews.csv" download>下载样例</el-button>
         <el-upload :show-file-list="false" :http-request="upload" accept=".xlsx,.xls,.csv">
-          <el-button v-permission="'import:execute'" type="primary">选择文件导入</el-button>
+          <el-button v-permission="'import:execute'" text>导入文件</el-button>
         </el-upload>
+        <el-button v-permission="'import:execute'" type="primary" :disabled="busy" @click="syncAll">同步四个平台</el-button>
       </div>
-      <el-table :data="jobs.records" class="mt" empty-text="还没有导入记录。">
-        <el-table-column label="文件" min-width="180">
+      <el-table :data="shops" class="mt" empty-text="还没有店铺。保存项目后再回来。">
+        <el-table-column label="平台" min-width="88">
+          <template #default="{ row }">{{ platformLabel(row.platform) }}</template>
+        </el-table-column>
+        <el-table-column label="店铺" min-width="180">
+          <template #default="{ row }">{{ row.shopName }}</template>
+        </el-table-column>
+        <el-table-column label="状态" min-width="200">
+          <template #default="{ row }">
+            <span class="status-text" :class="{ 'is-ok': row.status === 'READY', 'is-bad': row.status === 'FAILED' }">
+              {{ shopStatusLabel(row) }}
+            </span>
+            <p v-if="shopNote(row)" class="cell-note">{{ shopNote(row) }}</p>
+          </template>
+        </el-table-column>
+        <el-table-column label="时间" width="168">
+          <template #default="{ row }">{{ formatClock(row.lastSyncedAt) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="88">
+          <template #default="{ row }">
+            <el-button v-permission="'import:execute'" text :disabled="busy" @click="syncOne(row.platform)">同步</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-table :data="jobs.records" class="mt" empty-text="还没有同步记录。">
+        <el-table-column label="来源" min-width="180">
           <template #default="{ row }">{{ row.filename }}</template>
         </el-table-column>
         <el-table-column label="状态" min-width="200">
@@ -104,7 +127,7 @@
 
     <el-card class="block">
       <template #header>分析流水线</template>
-      <p class="muted">一条导入可一键清洗并分析。失败时状态下方会写清是分析服务没开、超时，还是没配模型已按词典，可点重试。点开评论左侧箭头可看方面-情感-原因和置信度。方面名必须落在词典或「其它」。</p>
+      <p class="muted">同步完成后可一键清洗并分析。失败时状态下方会写清是分析服务没开、超时，还是没配模型已按词典，可点重试。点开评论左侧箭头可看方面-情感-原因和置信度。方面名必须落在词典或「其它」。</p>
       <el-table :data="pipeline.records" class="mt" empty-text="还没有分析记录。">
         <el-table-column label="类型" min-width="120">
           <template #default="{ row }">{{ jobTypeLabel(row.type) }}</template>
@@ -225,18 +248,6 @@
       <p v-else class="muted">对应原评已不存在。</p>
     </el-drawer>
 
-    <el-dialog v-model="importHelpVisible" title="从商家后台导出" width="560px">
-      <p class="muted">只导入商家授权导出的评价，不抓取平台页面。竞品口碑也请自行导出后再导入。</p>
-      <p>京东：商家后台 → 评价管理 → 导出。常见列：评价内容、评价时间、商品名称。</p>
-      <p>淘宝 / 天猫：卖家中心 → 评价管理 → 导出。常见列：评价内容、评价时间、宝贝标题。</p>
-      <p>抖音：抖店 → 评价管理 → 导出。常见列：评价内容、评价时间、商品名称。</p>
-      <p>小红书：专业号后台导出评论。常见列：评论内容、发布时间。</p>
-      <p class="muted">没有「平台」列时，文件名带上京东、淘宝、小红书或抖音。也可用「下载样例」看灯鉴模板。</p>
-      <template #footer>
-        <el-button type="primary" @click="importHelpVisible = false">知道了</el-button>
-      </template>
-    </el-dialog>
-
     <el-dialog v-model="editVisible" title="编辑项目" width="560px">
       <el-form label-width="90px">
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
@@ -276,6 +287,7 @@ const router = useRouter()
 const id = Number(route.params.id)
 const project = ref<any>(null)
 const overview = ref<any>(null)
+const shops = ref<any[]>([])
 const jobs = reactive({ records: [] as any[] })
 const pipeline = reactive({ records: [] as any[] })
 const reviews = reactive({ records: [] as any[], total: 0 })
@@ -294,7 +306,6 @@ const alerts = ref<any[]>([])
 const alertsLoading = ref(false)
 const alertDrawer = ref(false)
 const alertEvidences = ref<any[]>([])
-const importHelpVisible = ref(false)
 const editVisible = ref(false)
 const competitorsText = ref('')
 const keywordsText = ref('')
@@ -315,8 +326,9 @@ const competitorNote = computed(() => {
   return ' · 竞品 ' + competitorNames.value.join('、')
 })
 const runningJob = computed(() => {
-  const row = pipeline.records[0]
-  return row && isRunningStatus(row.status) ? row : null
+  const pipe = pipeline.records[0]
+  if (pipe && isRunningStatus(pipe.status)) return pipe
+  return jobs.records.find((row) => isRunningStatus(row.status)) || null
 })
 const busy = computed(() => reportBusy.value || submitting.value || Boolean(runningJob.value))
 const latestFailed = computed(() => {
@@ -329,7 +341,13 @@ const latestFailedNote = computed(() => {
   return !note || note === '—' ? '请点重试，或先确认分析服务已启动。' : note
 })
 const runningNote = computed(() => {
-  const note = pipelineRemark(runningJob.value?.message)
+  const row = runningJob.value
+  if (!row) return ''
+  if (row.type === 'SYNC' || row.type === 'IMPORT') {
+    const note = importRemark(row)
+    return !note || note === '—' ? '' : note
+  }
+  const note = pipelineRemark(row.message)
   if (note && /已完成|第 \d+ \/ \d+ 步/.test(note)) return note
   return ''
 })
@@ -341,7 +359,7 @@ const reviewEmptyText = computed(() => {
   }
   if (aspect.value) return '这个方面还没有原评。点图表换一个方面，或重置筛选。'
   if (platform.value || keyword.value) return '没有符合条件的评论。试试重置筛选。'
-  return '还没有评论。请先导入文件，再点清洗并分析。'
+  return '还没有评论。请先同步四个平台，再点清洗并分析。'
 })
 
 function searchReviews() {
@@ -398,7 +416,7 @@ async function saveProject() {
 async function load() {
   const { data } = await http.get(`/projects/${id}`)
   project.value = data.data
-  await Promise.all([loadJobs(), loadPipeline(), loadReviews(), loadOverview(), loadLatestReport()])
+  await Promise.all([loadShops(), loadJobs(), loadPipeline(), loadReviews(), loadOverview(), loadLatestReport()])
   loadAlerts()
 }
 
@@ -437,9 +455,32 @@ async function loadLatestReport() {
   }
 }
 
+async function loadShops() {
+  try {
+    const { data } = await http.get(`/projects/${id}/channels`)
+    shops.value = data.data || []
+  } catch {
+    shops.value = []
+  }
+}
+
 async function loadJobs() {
   const { data } = await http.get(`/projects/${id}/imports`)
   jobs.records = data.data.records
+}
+
+function shopStatusLabel(row: { status?: string; volume?: number }) {
+  if (row.status === 'IMPORTING') return '同步中'
+  if (row.status === 'READY') return '已同步'
+  if (row.status === 'FAILED') return '失败'
+  return '已授权'
+}
+
+function shopNote(row: { status?: string; volume?: number }) {
+  if (row.status === 'IMPORTING') return '正在拉取评价'
+  const n = Number(row.volume) || 0
+  if (n > 0) return n + ' 条'
+  return '等待首次同步'
 }
 
 async function loadPipeline() {
@@ -529,6 +570,30 @@ async function triggerRun() {
   await runPipeline(`/projects/${id}/pipeline/run`, '已开始清洗并分析，可以离开此页')
 }
 
+async function syncAll() {
+  await runSync()
+}
+
+async function syncOne(platform: string) {
+  await runSync(platform)
+}
+
+async function runSync(platform?: string) {
+  if (busy.value) return
+  submitting.value = true
+  try {
+    const { data } = await http.post(`/projects/${id}/channels/sync`, null, {
+      params: platform ? { platform } : undefined,
+    })
+    watchingJobId.value = Number(data.data?.id) || null
+    ElMessage.success('已开始同步，可以离开此页')
+    startPoll()
+    await tickPipeline()
+  } finally {
+    submitting.value = false
+  }
+}
+
 async function retryJob(jobId: number) {
   await runPipeline(`/pipeline/${jobId}/retry`, '已开始重试，可以离开此页')
 }
@@ -548,8 +613,11 @@ function startPoll() {
 }
 
 async function tickPipeline() {
-  await loadPipeline()
-  const latest = pipeline.records[0]
+  await Promise.all([loadPipeline(), loadJobs(), loadShops()])
+  const latest = runningJob.value
+    || pipeline.records.find((row) => Number(row.id) === watchingJobId.value)
+    || jobs.records.find((row) => Number(row.id) === watchingJobId.value)
+    || pipeline.records[0]
   if (latest && isRunningStatus(latest.status)) {
     return
   }
@@ -566,7 +634,9 @@ async function tickPipeline() {
   if (latest.status === 'FAILED') {
     ElMessage.error(friendlyMessage(latest.message) || '没有完成')
   } else if (latest.status === 'READY') {
-    const note = pipelineRemark(latest.message)
+    const note = latest.type === 'SYNC' || latest.type === 'IMPORT'
+      ? importRemark(latest)
+      : pipelineRemark(latest.message)
     ElMessage.success(!note || note === '—' ? '已完成' : note)
   }
 }

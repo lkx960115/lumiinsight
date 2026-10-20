@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>怎么用</h2>
-        <p class="muted">大约 15 分钟走完一次演示：导入样例 → 清洗并分析 → 看报告和原评 → 导出。</p>
+        <p class="muted">大约 15 分钟走完一次：同步四个平台 → 清洗并分析 → 看报告和原评 → 导出。</p>
       </div>
     </div>
 
@@ -19,8 +19,8 @@
     </el-card>
 
     <el-card class="block">
-      <template #header>3. 导入样例评论</template>
-      <p class="muted">点「下载样例」一次导入即可，里面已有本型号和竞品原评。也可从京东/淘宝/抖店/小红书商家后台导出评价表再导入。系统认「评价内容」「评论内容」等列名。点「选择文件导入」，等到导入完成。不要在这里抓取平台。</p>
+      <template #header>3. 同步四个平台</template>
+      <p class="muted">进入项目后点「同步四个平台」。京东、淘宝、抖音、小红书本店会写入评价，含本型号和竞品。完成后点清洗并分析。也可以导入评价表。</p>
     </el-card>
 
     <el-card class="block">

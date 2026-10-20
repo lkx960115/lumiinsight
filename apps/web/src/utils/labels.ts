@@ -26,6 +26,8 @@ export function jobTypeLabel(type?: string | null) {
   if (type === 'CLEAN') return '清洗'
   if (type === 'ANALYZE') return '分析'
   if (type === 'RUN') return '清洗并分析'
+  if (type === 'IMPORT') return '导入'
+  if (type === 'SYNC') return '同步评价'
   return type || '—'
 }
 
@@ -83,6 +85,7 @@ export function auditActionLabel(action?: string | null) {
     'llm.model.save': '保存模型',
     'llm.route.save': '设置分析用途',
     'import.submit': '导入评论',
+    'channel.sync': '同步评价',
     'project.create': '新建项目',
     'project.update': '更新项目',
     'project.delete': '删除项目',
