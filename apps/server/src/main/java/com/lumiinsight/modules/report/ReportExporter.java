@@ -49,7 +49,12 @@ public class ReportExporter {
             return new File(ReportPdfWriter.render(report, numbers, citeRows(report, numbers)),
                     safeName(report.getTitle()) + ".pdf", MediaType.APPLICATION_PDF);
         }
-        throw BizException.of("BAD_REQUEST", "只支持导出表格、文稿或 PDF");
+        if ("pptx".equalsIgnoreCase(format) || "ppt".equalsIgnoreCase(format)) {
+            return new File(ReportPptWriter.render(report, numbers, citeRows(report, numbers)),
+                    safeName(report.getTitle()) + ".pptx",
+                    MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.presentationml.presentation"));
+        }
+        throw BizException.of("BAD_REQUEST", "只支持导出表格、文稿、PPT 或 PDF");
     }
 
     private byte[] excel(ReportView report, Map<Long, Integer> numbers) {

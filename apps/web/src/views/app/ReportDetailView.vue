@@ -122,12 +122,13 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="exportVisible" title="导出报告" width="520px">
-      <p class="muted">PDF 方便发给领导；表格方便筛选引用；文稿方便粘贴转发。三种都会带引用编号，对应文末原评。</p>
+    <el-dialog v-model="exportVisible" title="导出报告" width="560px">
+      <p class="muted">PDF 方便发给领导；PPT 方便会上讲解；表格方便筛选引用；文稿方便粘贴转发。都会带引用编号，对应文末原评。</p>
       <template #footer>
         <el-button @click="exportVisible = false">取消</el-button>
         <el-button :disabled="busy" @click="download('md')">导出文稿</el-button>
         <el-button :disabled="busy" @click="download('xlsx')">导出表格</el-button>
+        <el-button :disabled="busy" @click="download('pptx')">导出 PPT</el-button>
         <el-button type="primary" :disabled="busy" @click="download('pdf')">导出 PDF</el-button>
       </template>
     </el-dialog>
@@ -216,7 +217,7 @@ function openClaim(claim: { evidenceIds?: number[] }) {
   drawer.value = true
 }
 
-async function download(format: 'xlsx' | 'md' | 'pdf') {
+async function download(format: 'xlsx' | 'md' | 'pdf' | 'pptx') {
   if (!report.value?.id || busy.value) return
   busy.value = true
   try {
@@ -242,14 +243,22 @@ async function download(format: 'xlsx' | 'md' | 'pdf') {
     a.click()
     URL.revokeObjectURL(url)
     exportVisible.value = false
-    ElMessage.success(format === 'xlsx' ? '已导出表格' : format === 'pdf' ? '已导出 PDF' : '已导出文稿')
+    ElMessage.success(
+      format === 'xlsx' ? '已导出表格'
+        : format === 'pdf' ? '已导出 PDF'
+          : format === 'pptx' ? '已导出 PPT'
+            : '已导出文稿'
+    )
   } finally {
     busy.value = false
   }
 }
 
-function filenameFromHeader(raw: unknown, format: 'xlsx' | 'md' | 'pdf') {
-  const fallback = format === 'xlsx' ? '口碑报告.xlsx' : format === 'pdf' ? '口碑报告.pdf' : '口碑报告.md'
+function filenameFromHeader(raw: unknown, format: 'xlsx' | 'md' | 'pdf' | 'pptx') {
+  const fallback = format === 'xlsx' ? '口碑报告.xlsx'
+    : format === 'pdf' ? '口碑报告.pdf'
+      : format === 'pptx' ? '口碑报告.pptx'
+        : '口碑报告.md'
   const header = String(raw || '')
   const star = header.match(/filename\*=UTF-8''([^;]+)/i)
   if (star) {
