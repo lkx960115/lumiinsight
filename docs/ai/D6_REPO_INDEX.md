@@ -38,7 +38,7 @@ lumiinsight/
 | 评论列表 | `modules/review` |
 | 模型配置 | `modules/llm` |
 | 用量 | 前端 `/admin/usage`（`UsageView.vue`），接口仍走模型配置权限 |
-| 报告 | `modules/report`；前端 `/app/reports`；导出表格 / 文稿 / PDF |
+| 报告 | `modules/report`；前端 `/app/reports`；含问原评一节；导出表格 / 文稿 / PDF |
 | 问原评 | `modules/ask`；Worker `POST /v1/jobs/ask`；前端 `AskDock.vue`（仅项目详情/报告） |
 | 口碑预警 | `modules/alert`；Worker `POST /v1/jobs/alert`；项目详情「口碑预警」（负向变多 / 新槽点 / 声量骤降） |
 | 流水线 / Worker 客户端 | `modules/pipeline`；Worker：`apps/ai-worker/app/main.py` |

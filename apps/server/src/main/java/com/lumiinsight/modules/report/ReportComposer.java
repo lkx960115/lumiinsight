@@ -66,6 +66,7 @@ public class ReportComposer {
         sections.add(section("quotes", "原声摘录", quoteClaims(pos, neg, allowed)));
         sections.add(competeSection(project, evidence, byReview, allowed));
         sections.add(section("advice", "改进建议", adviceClaims(aspectOrder, byAspect, pos, byReview, allowed)));
+        sections.add(section("ask", "问原评", askClaims(project, byAspect, evidence, byReview, allowed)));
         return sections.stream().filter(s -> s.getClaims() != null && !s.getClaims().isEmpty()).toList();
     }
 
@@ -646,6 +647,165 @@ public class ReportComposer {
             add(claims, "暂无集中负向，可继续沿用现有卖点表述，并抽查原评是否稳定。例如「" + quoteOf(pos.get(0)) + "」。", ids(first(pos, 3), allowed));
         }
         return claims;
+    }
+
+    private List<ReportView.Claim> askClaims(
+            Project project,
+            Map<String, List<Evidence>> byAspect,
+            List<Evidence> evidence,
+            Map<Long, Review> byReview,
+            Set<Long> allowed
+    ) {
+        List<ReportView.Claim> claims = new ArrayList<>();
+        addAskNeg(claims, "安装最常被吐槽的是什么？", "安装", byAspect, allowed, 2);
+        addAskColor(claims, byAspect, byReview, allowed);
+        addAskNeg(claims, "售后负向主要集中在哪？", "售后", byAspect, allowed, 1);
+        addAskPrice(claims, byAspect, allowed);
+        addAskShip(claims, byAspect, allowed);
+        addAskRival(claims, project, evidence, byReview, allowed);
+        return claims;
+    }
+
+    private static void addAskNeg(
+            List<ReportView.Claim> claims,
+            String question,
+            String aspect,
+            Map<String, List<Evidence>> byAspect,
+            Set<Long> allowed,
+            int minNeg
+    ) {
+        List<Evidence> neg = bySentiment(byAspect.getOrDefault(aspect, List.of()), "neg");
+        if (neg.size() < minNeg) {
+            return;
+        }
+        add(claims, "问：" + question + " 答：「" + aspect + "」负向 " + neg.size()
+                + " 条，原评写到「" + quoteOf(neg.get(0)) + "」。", ids(first(neg, 3), allowed));
+    }
+
+    private static void addAskColor(
+            List<ReportView.Claim> claims,
+            Map<String, List<Evidence>> byAspect,
+            Map<Long, Review> byReview,
+            Set<Long> allowed
+    ) {
+        List<Evidence> rows = byAspect.getOrDefault("色温", List.of());
+        List<Evidence> cold = mentions(rows, byReview, "冷");
+        List<Evidence> warm = mentions(rows, byReview, "暖");
+        if (cold.isEmpty() && warm.isEmpty()) {
+            return;
+        }
+        String answer;
+        List<Evidence> proof;
+        if (cold.size() > warm.size()) {
+            answer = "原评更多写到偏冷，例如「" + quoteOf(cold.get(0)) + "」。";
+            proof = cold;
+        } else if (warm.size() > cold.size()) {
+            answer = "原评更多写到偏暖，例如「" + quoteOf(warm.get(0)) + "」。";
+            proof = warm;
+        } else {
+            answer = "偏冷、偏暖都有人提。偏冷如「" + quoteOf(cold.get(0)) + "」。";
+            proof = all(cold, warm);
+        }
+        add(claims, "问：色温偏冷还是偏暖？ 答：" + answer, ids(first(proof, 3), allowed));
+    }
+
+    private static void addAskPrice(List<ReportView.Claim> claims, Map<String, List<Evidence>> byAspect, Set<Long> allowed) {
+        List<Evidence> rows = byAspect.getOrDefault("价格", List.of());
+        List<Evidence> neg = bySentiment(rows, "neg");
+        List<Evidence> pos = bySentiment(rows, "pos");
+        if (neg.isEmpty() && pos.isEmpty()) {
+            return;
+        }
+        String answer;
+        List<Evidence> proof;
+        if (!neg.isEmpty() && pos.isEmpty()) {
+            answer = "有人嫌贵，原评写到「" + quoteOf(neg.get(0)) + "」。";
+            proof = neg;
+        } else if (neg.isEmpty()) {
+            answer = "有人说实惠，原评写到「" + quoteOf(pos.get(0)) + "」。";
+            proof = pos;
+        } else {
+            answer = "有人嫌贵，也有人说实惠。负向如「" + quoteOf(neg.get(0)) + "」。";
+            proof = all(neg, pos);
+        }
+        add(claims, "问：价格贵不贵，原评怎么说？ 答：" + answer, ids(first(proof, 3), allowed));
+    }
+
+    private static void addAskShip(List<ReportView.Claim> claims, Map<String, List<Evidence>> byAspect, Set<Long> allowed) {
+        List<Evidence> logistics = bySentiment(byAspect.getOrDefault("物流", List.of()), "neg");
+        List<Evidence> pack = bySentiment(byAspect.getOrDefault("包装", List.of()), "neg");
+        List<Evidence> neg = all(logistics, pack);
+        if (neg.isEmpty()) {
+            return;
+        }
+        String which;
+        if (!logistics.isEmpty() && !pack.isEmpty()) {
+            which = "物流和包装都有负向";
+        } else if (!logistics.isEmpty()) {
+            which = "物流有负向";
+        } else {
+            which = "包装有负向";
+        }
+        add(claims, "问：物流和包装有没有问题？ 答：" + which + "，原评写到「" + quoteOf(neg.get(0)) + "」。",
+                ids(first(neg, 3), allowed));
+    }
+
+    private void addAskRival(
+            List<ReportView.Claim> claims,
+            Project project,
+            List<Evidence> evidence,
+            Map<Long, Review> byReview,
+            Set<Long> allowed
+    ) {
+        List<String> rivals = readNames(project.getCompetitors());
+        if (rivals.isEmpty()) {
+            return;
+        }
+        List<Evidence> rivalRows = new ArrayList<>();
+        for (Evidence row : evidence) {
+            Review review = byReview.get(row.getReviewId());
+            String product = review == null ? "" : String.valueOf(review.getProductName() == null ? "" : review.getProductName());
+            if (firstMatch(product, rivals) != null) {
+                rivalRows.add(row);
+            }
+        }
+        Map<String, List<Evidence>> byAspect = new LinkedHashMap<>();
+        for (Evidence row : rivalRows) {
+            if (StringUtils.hasText(row.getAspectName())) {
+                byAspect.computeIfAbsent(row.getAspectName(), key -> new ArrayList<>()).add(row);
+            }
+        }
+        String pain = densestAspect(null, byAspect, "neg");
+        if (pain == null) {
+            return;
+        }
+        List<Evidence> neg = bySentiment(byAspect.get(pain), "neg");
+        if (neg.isEmpty()) {
+            return;
+        }
+        add(claims, "问：竞品被抱怨最多的是哪方面？ 答：竞品「" + pain + "」负向最集中，原评写到「"
+                + quoteOf(neg.get(0)) + "」。", ids(first(neg, 3), allowed));
+    }
+
+    private static List<Evidence> mentions(List<Evidence> rows, Map<Long, Review> byReview, String word) {
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        List<Evidence> out = new ArrayList<>();
+        for (Evidence row : rows) {
+            StringBuilder text = new StringBuilder();
+            if (row.getQuote() != null) {
+                text.append(row.getQuote());
+            }
+            Review review = byReview == null ? null : byReview.get(row.getReviewId());
+            if (review != null && review.getContent() != null) {
+                text.append(review.getContent());
+            }
+            if (text.toString().contains(word)) {
+                out.add(row);
+            }
+        }
+        return out;
     }
 
     private static ReportView.Section section(String code, String title, List<ReportView.Claim> claims) {
