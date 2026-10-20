@@ -1,8 +1,11 @@
 # 生成演示导入文件。不含真实手机号。
+# 一次导入要能看到：问原评章节、口碑预警（负向变多/新槽点/声量骤降）、竞品对照。
 
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parent.parent
+WEB = REPO / "apps" / "web" / "public"
 platforms = ["xiaohongshu", "jd", "taobao", "douyin"]
 texts = [
     "亮度够用，客厅晚上很舒服",
@@ -23,6 +26,13 @@ own_april = [
     ("xiaohongshu", "自己安装对不上孔位"),
     ("jd", "色温忽冷忽暖，希望能调"),
     ("taobao", "安装要找师傅，说明书不行"),
+    ("jd", "售后推诿，换货等了一周"),
+    ("taobao", "售后推诿，换货等了一周"),
+    ("douyin", "售后推诿，换货等了一周"),
+    ("xiaohongshu", "价格太贵，不值这个钱"),
+    ("jd", "物流破损，外箱都凹了"),
+    ("taobao", "卫生间防水差，漏光"),
+    ("douyin", "浴室防水差，漏光"),
 ]
 competitors = [
     ("jd", "安装比演示那款麻烦，说明书看不懂"),
@@ -52,7 +62,11 @@ for i, (p, t) in enumerate(competitors, start=1):
     )
 
 text = "\n".join(rows) + "\n"
-(ROOT / "sample-reviews.csv").write_text(text, encoding="utf-8-sig")
 compete_rows = [rows[0]] + [line for line in rows[1:] if "星辉竞品灯" in line]
-(ROOT / "sample-competitor-reviews.csv").write_text("\n".join(compete_rows) + "\n", encoding="utf-8-sig")
-print("wrote", ROOT / "sample-reviews.csv", "rows", len(rows) - 1)
+compete_text = "\n".join(compete_rows) + "\n"
+targets = [ROOT, WEB]
+for folder in targets:
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "sample-reviews.csv").write_text(text, encoding="utf-8-sig")
+    (folder / "sample-competitor-reviews.csv").write_text(compete_text, encoding="utf-8-sig")
+print("wrote", len(rows) - 1, "rows to fixtures and web/public")

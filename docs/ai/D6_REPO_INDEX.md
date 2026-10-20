@@ -9,7 +9,7 @@ lumiinsight/
 ├── apps/server/          Spring Boot 3.3 / 启动类 LumiInsightApplication
 ├── apps/web/             Vue3 + Vite + Element Plus
 ├── apps/ai-worker/       清洗/分析/问原评/预警/报告摘要：/health、POST /v1/jobs/clean、analyze、embed、ask、alert、report_summary
-├── eval/fixtures/        sample-reviews.csv（120 条）
+├── eval/fixtures/        sample-reviews.csv（约 140 条，含竞品）
 ├── docs/演示说明.md
 └── docs/ai/CODE_PROGRESS.md
 ```

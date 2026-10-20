@@ -62,7 +62,7 @@
 
     <el-card class="block">
       <template #header>导入评论（Excel / CSV）</template>
-      <p class="muted">从京东、淘宝、抖店、小红书商家后台导出评价表再导入。认「评价内容」「评论内容」等常见列名；没有平台列时，把文件名带上「京东」或「淘宝」即可。不会在这里抓取平台。用 Excel 打开请重新下载样例，不要把乱码文件再导入。</p>
+      <p class="muted">从京东、淘宝、抖店、小红书商家后台导出评价表再导入。认「评价内容」「评论内容」等常见列名；没有平台列时，把文件名带上「京东」或「淘宝」即可。不会在这里抓取平台。用样例时，先把主型号填成「演示吸顶灯」、竞品填成「星辉竞品灯」，再点「下载样例」一次导入。用 Excel 打开请重新下载样例，不要把乱码文件再导入。</p>
       <div class="toolbar">
         <el-button text @click="importHelpVisible = true">各平台怎么导出</el-button>
         <el-button text tag="a" href="/sample-reviews.csv" download>下载样例</el-button>
@@ -242,8 +242,8 @@
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="品类"><el-input v-model="form.category" /></el-form-item>
         <el-form-item label="品牌"><el-input v-model="form.brand" /></el-form-item>
-        <el-form-item label="主型号"><el-input v-model="form.mainModel" /></el-form-item>
-        <el-form-item label="竞品"><el-input v-model="competitorsText" placeholder="逗号分隔，需与评论商品名对应" /></el-form-item>
+        <el-form-item label="主型号"><el-input v-model="form.mainModel" placeholder="例如演示吸顶灯" /></el-form-item>
+        <el-form-item label="竞品"><el-input v-model="competitorsText" placeholder="例如星辉竞品灯" /></el-form-item>
         <el-form-item label="关键词"><el-input v-model="keywordsText" placeholder="逗号分隔" /></el-form-item>
         <el-form-item label="平台">
           <el-checkbox-group v-model="form.platforms">

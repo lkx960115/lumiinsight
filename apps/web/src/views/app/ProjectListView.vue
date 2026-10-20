@@ -59,8 +59,8 @@
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="品类"><el-input v-model="form.category" /></el-form-item>
         <el-form-item label="品牌"><el-input v-model="form.brand" /></el-form-item>
-        <el-form-item label="主型号"><el-input v-model="form.mainModel" /></el-form-item>
-        <el-form-item label="竞品"><el-input v-model="competitorsText" placeholder="逗号分隔，需与评论商品名对应" /></el-form-item>
+        <el-form-item label="主型号"><el-input v-model="form.mainModel" placeholder="例如演示吸顶灯" /></el-form-item>
+        <el-form-item label="竞品"><el-input v-model="competitorsText" placeholder="例如星辉竞品灯" /></el-form-item>
         <el-form-item label="关键词"><el-input v-model="keywordsText" placeholder="逗号分隔" /></el-form-item>
         <el-form-item label="平台">
           <el-checkbox-group v-model="form.platforms">
@@ -79,11 +79,11 @@
 
     <el-dialog v-model="guideVisible" title="怎么走一遍" width="560px">
       <ol class="guide-steps">
-        <li>新建项目，填品牌和主型号。</li>
-        <li>进入项目，下载样例，或从商家后台导出评价表再导入。</li>
+        <li>新建项目。用样例时，主型号填「演示吸顶灯」，竞品填「星辉竞品灯」。</li>
+        <li>进入项目，点「下载样例」一次导入即可，或从商家后台导出评价表再导入。</li>
         <li>点「清洗并分析」。可以离开页面，稍后再回来看结果。</li>
         <li>看图表、按月走势和原评。评论列表可改成「按意思找」。</li>
-        <li>侧栏「报告」打开结论，点「查看原评」核对原文。摘要和建议会带原评，配了摘要模型时更像顾问口吻。报告有「问原评」一节。要对照竞品时，在项目详情填竞品并导入对应评论，再生成报告。报告里可按方面、按月对照谁在变差。项目详情口碑预警会提示负向变多、新槽点和声量骤降；右侧可点「问原评」，只根据本项目原评回答。</li>
+        <li>侧栏「报告」打开结论，点「查看原评」核对原文。摘要和建议会带原评，配了摘要模型时更像顾问口吻。报告有「问原评」一节，竞品可按方面、按月对照。项目详情口碑预警会提示负向变多、新槽点和声量骤降；右侧可点「问原评」，只根据本项目原评回答。</li>
         <li>需要带走时，在报告页导出 PDF、表格或文稿。</li>
       </ol>
       <p class="muted">分析服务未启动、或还没配模型 Key 时，会提示失败或按词典降级，不要当成系统坏了。</p>

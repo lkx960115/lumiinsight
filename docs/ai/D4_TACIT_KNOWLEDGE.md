@@ -25,7 +25,7 @@ ABSA 输出的方面名必须落在词典或「其它」；禁止模型自由发
 
 ## 5. 公开仓
 
-演示数据不要含真实用户手机号、内部未公开型号策略。样例用 `eval/fixtures/sample-reviews.csv`（工作台也可下载同一份）。
+演示数据不要含真实用户手机号、内部未公开型号策略。样例用 `eval/fixtures/sample-reviews.csv`（工作台「下载样例」同一份），一次导入含本型号「演示吸顶灯」和竞品「星辉竞品灯」，能亮问原评、预警和竞品对照。改样例后跑 `python3 eval/fixtures/generate_sample.py`。
 
 ## 6. 演示口径
 
