@@ -40,7 +40,7 @@ lumiinsight/
 | 用量 | 前端 `/admin/usage`（`UsageView.vue`），接口仍走模型配置权限 |
 | 报告 | `modules/report`；前端 `/app/reports`；摘要建议可走模型；含问原评一节；导出表格 / 文稿 / PDF |
 | 问原评 | `modules/ask`；Worker `POST /v1/jobs/ask`；前端 `AskDock.vue`（仅项目详情/报告）；问过的留在项目里 |
-| 口碑预警 | `modules/alert`；Worker `POST /v1/jobs/alert`；项目详情「口碑预警」（负向变多 / 新槽点 / 声量骤降） |
+| 口碑预警 | `modules/alert`；Worker `POST /v1/jobs/alert`；项目详情「口碑预警」（负向变多 / 新槽点 / 声量骤降）；对照过的留在项目里 |
 | 流水线 / Worker 客户端 | `modules/pipeline`；Worker：`apps/ai-worker/app/main.py` |
 | 四平台空适配器 | `modules/channel` |
 | 健康检查 | `GET /api/v1/health`、`/actuator/health` |
@@ -51,6 +51,6 @@ lumiinsight/
 
 `sys_user` `sys_role` `sys_permission` `sys_user_role` `sys_role_permission`  
 `project` `project_member` `import_job` `review` `review_aspect` `pipeline_job`  
-`llm_provider` `llm_model` `llm_route` `llm_usage` `aspect_dict` `audit_log` `evidence` `report`
+`llm_provider` `llm_model` `llm_route` `llm_usage` `aspect_dict` `audit_log` `evidence` `report` `ask_history` `alert_history`
 
 Worker 路由：`GET /health`、`POST /v1/jobs/clean`（去重 / 广告 / 过短 / 脱敏）、`POST /v1/jobs/analyze`（情感 + ABSA，方面名必须落在词典或「其它」）、`POST /v1/jobs/ask`（只根据给定原评作答）、`POST /v1/jobs/alert`（预警说明）。

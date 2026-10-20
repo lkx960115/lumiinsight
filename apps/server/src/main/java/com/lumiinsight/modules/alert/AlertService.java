@@ -1,8 +1,12 @@
 package com.lumiinsight.modules.alert;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumiinsight.common.util.MaskingUtil;
 import com.lumiinsight.modules.alert.dto.AlertView;
+import com.lumiinsight.modules.alert.entity.AlertHistory;
+import com.lumiinsight.modules.alert.mapper.AlertHistoryMapper;
 import com.lumiinsight.modules.evidence.dto.EvidenceView;
 import com.lumiinsight.modules.llm.LlmRuntimeService;
 import com.lumiinsight.modules.llm.LlmUsageService;
@@ -18,14 +22,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class AlertService {
@@ -41,6 +49,7 @@ public class AlertService {
     private static final int MAX_PREV_FOR_NEW = 1;
     private static final int MIN_PREV_FOR_DROP = 8;
     private static final int MAX_ALERTS = 5;
+    private static final int KEEP = 30;
 
     private final ProjectService projectService;
     private final ReviewMapper reviewMapper;
@@ -48,6 +57,8 @@ public class AlertService {
     private final LlmRuntimeService llmRuntimeService;
     private final LlmUsageService llmUsageService;
     private final WorkerClient workerClient;
+    private final AlertHistoryMapper alertHistoryMapper;
+    private final ObjectMapper objectMapper;
 
     public AlertService(
             ProjectService projectService,
@@ -55,7 +66,9 @@ public class AlertService {
             ReviewAspectMapper reviewAspectMapper,
             LlmRuntimeService llmRuntimeService,
             LlmUsageService llmUsageService,
-            WorkerClient workerClient
+            WorkerClient workerClient,
+            AlertHistoryMapper alertHistoryMapper,
+            ObjectMapper objectMapper
     ) {
         this.projectService = projectService;
         this.reviewMapper = reviewMapper;
@@ -63,16 +76,24 @@ public class AlertService {
         this.llmRuntimeService = llmRuntimeService;
         this.llmUsageService = llmUsageService;
         this.workerClient = workerClient;
+        this.alertHistoryMapper = alertHistoryMapper;
+        this.objectMapper = objectMapper;
     }
 
     public List<AlertView> list(Long projectId) {
         projectService.requireVisible(projectId);
-        List<AlertView> alerts = detect(projectId);
-        if (alerts.isEmpty()) {
-            return alerts;
+        List<AlertView> live = detect(projectId);
+        List<AlertHistory> saved = load(projectId);
+        if (!live.isEmpty()) {
+            if (stale(live, saved)) {
+                polish(projectId, live);
+                persist(projectId, live);
+                saved = load(projectId);
+            } else {
+                reuse(live, saved);
+            }
         }
-        polish(projectId, alerts);
-        return alerts;
+        return merge(live, saved);
     }
 
     private List<AlertView> detect(Long projectId) {
@@ -461,6 +482,176 @@ public class AlertService {
             }
         }
         return out;
+    }
+
+    private List<AlertHistory> load(Long projectId) {
+        return alertHistoryMapper.selectList(
+                new LambdaQueryWrapper<AlertHistory>()
+                        .eq(AlertHistory::getProjectId, projectId)
+                        .orderByDesc(AlertHistory::getId)
+        );
+    }
+
+    private static boolean stale(List<AlertView> live, List<AlertHistory> saved) {
+        Set<String> fingerprints = new HashSet<>();
+        for (AlertHistory row : saved) {
+            fingerprints.add(fingerprint(row));
+        }
+        for (AlertView view : live) {
+            if (!fingerprints.contains(fingerprint(view))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void reuse(List<AlertView> live, List<AlertHistory> saved) {
+        Map<String, AlertHistory> byFingerprint = new HashMap<>();
+        for (AlertHistory row : saved) {
+            byFingerprint.put(fingerprint(row), row);
+        }
+        for (AlertView view : live) {
+            AlertHistory row = byFingerprint.get(fingerprint(view));
+            if (row == null) {
+                continue;
+            }
+            view.setSummary(row.getSummary());
+            view.setSource(row.getSource());
+            view.setEvidences(readEvidences(row.getEvidenceJson()));
+        }
+    }
+
+    private void persist(Long projectId, List<AlertView> live) {
+        try {
+            for (AlertView view : live) {
+                AlertHistory existing = alertHistoryMapper.selectOne(
+                        new LambdaQueryWrapper<AlertHistory>()
+                                .eq(AlertHistory::getProjectId, projectId)
+                                .eq(AlertHistory::getKind, nvl(view.getKind()))
+                                .eq(AlertHistory::getAspect, nvl(view.getAspect()))
+                                .eq(AlertHistory::getRecentLabel, nvl(view.getRecentLabel()))
+                                .eq(AlertHistory::getPreviousLabel, nvl(view.getPreviousLabel()))
+                                .last("LIMIT 1")
+                );
+                if (existing == null) {
+                    AlertHistory row = new AlertHistory();
+                    fill(row, projectId, view);
+                    row.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Shanghai")));
+                    alertHistoryMapper.insert(row);
+                } else {
+                    fill(existing, projectId, view);
+                    alertHistoryMapper.updateById(existing);
+                }
+            }
+            trim(projectId);
+        } catch (Exception e) {
+            log.warn("预警未记下 projectId={}", projectId, e);
+        }
+    }
+
+    private void fill(AlertHistory row, Long projectId, AlertView view) {
+        row.setProjectId(projectId);
+        row.setKind(nvl(view.getKind()));
+        row.setAspect(nvl(view.getAspect()));
+        row.setRecentLabel(nvl(view.getRecentLabel()));
+        row.setPreviousLabel(nvl(view.getPreviousLabel()));
+        row.setRecentNeg(view.getRecentNeg());
+        row.setPreviousNeg(view.getPreviousNeg());
+        row.setRecentVolume(view.getRecentVolume());
+        row.setPreviousVolume(view.getPreviousVolume());
+        row.setSummary(clip(view.getSummary(), 2000));
+        row.setSource(StringUtils.hasText(view.getSource()) ? view.getSource() : "rule");
+        row.setEvidenceJson(writeEvidences(view.getEvidences()));
+    }
+
+    private void trim(Long projectId) {
+        List<AlertHistory> rows = load(projectId);
+        if (rows.size() <= KEEP) {
+            return;
+        }
+        List<Long> drop = rows.subList(KEEP, rows.size()).stream().map(AlertHistory::getId).toList();
+        alertHistoryMapper.delete(new LambdaQueryWrapper<AlertHistory>().in(AlertHistory::getId, drop));
+    }
+
+    private List<AlertView> merge(List<AlertView> live, List<AlertHistory> saved) {
+        List<AlertView> out = new ArrayList<>();
+        if (!live.isEmpty()) {
+            out.addAll(live);
+            String recent = nvl(live.get(0).getRecentLabel());
+            String previous = nvl(live.get(0).getPreviousLabel());
+            for (AlertHistory row : saved) {
+                if (recent.equals(nvl(row.getRecentLabel())) && previous.equals(nvl(row.getPreviousLabel()))) {
+                    continue;
+                }
+                out.add(toView(row));
+            }
+            return out;
+        }
+        for (AlertHistory row : saved) {
+            out.add(toView(row));
+        }
+        return out;
+    }
+
+    private AlertView toView(AlertHistory row) {
+        return AlertView.builder()
+                .kind(row.getKind())
+                .aspect(row.getAspect())
+                .recentLabel(row.getRecentLabel())
+                .previousLabel(row.getPreviousLabel())
+                .recentNeg(nz(row.getRecentNeg()))
+                .previousNeg(nz(row.getPreviousNeg()))
+                .recentVolume(nz(row.getRecentVolume()))
+                .previousVolume(nz(row.getPreviousVolume()))
+                .summary(row.getSummary())
+                .source(row.getSource())
+                .evidences(readEvidences(row.getEvidenceJson()))
+                .build();
+    }
+
+    private String writeEvidences(List<EvidenceView> evidences) {
+        try {
+            return objectMapper.writeValueAsString(evidences == null ? List.of() : evidences);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    private List<EvidenceView> readEvidences(String json) {
+        if (!StringUtils.hasText(json)) {
+            return List.of();
+        }
+        try {
+            List<EvidenceView> rows = objectMapper.readValue(json, new TypeReference<>() {
+            });
+            return rows == null ? List.of() : rows;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static String fingerprint(AlertView view) {
+        return windowKey(view.getKind(), view.getAspect(), view.getRecentLabel(), view.getPreviousLabel())
+                + "|" + view.getRecentNeg() + "|" + view.getPreviousNeg()
+                + "|" + view.getRecentVolume() + "|" + view.getPreviousVolume();
+    }
+
+    private static String fingerprint(AlertHistory row) {
+        return windowKey(row.getKind(), row.getAspect(), row.getRecentLabel(), row.getPreviousLabel())
+                + "|" + nz(row.getRecentNeg()) + "|" + nz(row.getPreviousNeg())
+                + "|" + nz(row.getRecentVolume()) + "|" + nz(row.getPreviousVolume());
+    }
+
+    private static String windowKey(String kind, String aspect, String recent, String previous) {
+        return nvl(kind) + "|" + nvl(aspect) + "|" + nvl(recent) + "|" + nvl(previous);
+    }
+
+    private static String nvl(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static int nz(Integer value) {
+        return value == null ? 0 : value;
     }
 
     private static final class Bucket {

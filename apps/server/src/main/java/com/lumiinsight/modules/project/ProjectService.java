@@ -8,6 +8,8 @@ import com.lumiinsight.common.exception.BizException;
 import com.lumiinsight.common.security.AuthUser;
 import com.lumiinsight.common.security.SecurityUtils;
 import com.lumiinsight.infra.minio.ObjectStorage;
+import com.lumiinsight.modules.alert.entity.AlertHistory;
+import com.lumiinsight.modules.alert.mapper.AlertHistoryMapper;
 import com.lumiinsight.modules.ask.entity.AskHistory;
 import com.lumiinsight.modules.ask.mapper.AskHistoryMapper;
 import com.lumiinsight.modules.audit.AuditService;
@@ -54,6 +56,7 @@ public class ProjectService {
     private final ImportJobMapper importJobMapper;
     private final LlmUsageMapper llmUsageMapper;
     private final AskHistoryMapper askHistoryMapper;
+    private final AlertHistoryMapper alertHistoryMapper;
     private final QdrantClient qdrantClient;
     private final ObjectStorage objectStorage;
     private final ObjectMapper objectMapper;
@@ -70,6 +73,7 @@ public class ProjectService {
             ImportJobMapper importJobMapper,
             LlmUsageMapper llmUsageMapper,
             AskHistoryMapper askHistoryMapper,
+            AlertHistoryMapper alertHistoryMapper,
             QdrantClient qdrantClient,
             ObjectStorage objectStorage,
             ObjectMapper objectMapper,
@@ -85,6 +89,7 @@ public class ProjectService {
         this.importJobMapper = importJobMapper;
         this.llmUsageMapper = llmUsageMapper;
         this.askHistoryMapper = askHistoryMapper;
+        this.alertHistoryMapper = alertHistoryMapper;
         this.qdrantClient = qdrantClient;
         this.objectStorage = objectStorage;
         this.objectMapper = objectMapper;
@@ -165,6 +170,7 @@ public class ProjectService {
                 new LambdaQueryWrapper<ImportJob>().eq(ImportJob::getProjectId, id)
         );
         askHistoryMapper.delete(new LambdaQueryWrapper<AskHistory>().eq(AskHistory::getProjectId, id));
+        alertHistoryMapper.delete(new LambdaQueryWrapper<AlertHistory>().eq(AlertHistory::getProjectId, id));
         evidenceMapper.delete(new LambdaQueryWrapper<Evidence>().eq(Evidence::getProjectId, id));
         reviewAspectMapper.delete(new LambdaQueryWrapper<ReviewAspect>().eq(ReviewAspect::getProjectId, id));
         reportMapper.delete(new LambdaQueryWrapper<Report>().eq(Report::getProjectId, id));
