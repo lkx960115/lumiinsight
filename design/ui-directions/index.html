@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>灯鉴 LumiInsight · 界面对比</title>
+<style>
+  :root{
+    --bg:#f4f5f7;
+    --surface:#fff;
+    --line:#e3e6ec;
+    --ink:#141a22;
+    --ink-2:#3d4652;
+    --soft:#6b7482;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.65 -apple-system,"PingFang SC","Noto Sans SC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{margin:0;letter-spacing:-.01em}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1120px;margin:0 auto;padding:48px 32px 80px}
+
+  /* header */
+  .top{display:flex;align-items:flex-end;gap:24px;padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:34px}
+  .top .eyebrow{font-size:11px;letter-spacing:.2em;color:var(--soft);margin-bottom:10px}
+  .top h1{font-size:30px;line-height:1.25}
+  .top p{margin:10px 0 0;color:var(--soft);font-size:13.5px;max-width:52em}
+  .top .meta{margin-left:auto;text-align:right;font-size:12px;color:var(--soft);flex-shrink:0}
+  .top .meta b{display:block;color:var(--ink-2);font-weight:600}
+
+  /* direction cards */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:14px}
+  .dir{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+    display:flex;flex-direction:column;transition:.2s;
+  }
+  .dir:hover{box-shadow:0 8px 28px rgba(20,26,34,.09);transform:translateY(-2px)}
+  .thumb{height:132px;position:relative;overflow:hidden;padding:16px 18px}
+  .thumb .bar{height:6px;border-radius:3px;margin-bottom:8px}
+  .thumb .row{display:flex;gap:6px;margin-bottom:10px}
+  .thumb .blk{border-radius:5px}
+  .d-a .thumb{background:#f5f6f9;border-bottom:1px solid #e4e7ee}
+  .d-a .bar{background:#dfe3ec}
+  .d-a .bar.hl{background:#2b57d6;width:42%}
+  .d-a .blk{background:#fff;border:1px solid #e4e7ee}
+  .d-b .thumb{background:#efe9dd;border-bottom:1px solid rgba(27,42,37,.14)}
+  .d-b .bar{background:rgba(27,42,37,.12)}
+  .d-b .bar.hl{background:#1f6a56;width:52%}
+  .d-b .blk{background:#fdfbf6;border:1px solid rgba(27,42,37,.12)}
+  .d-c .thumb{background:#0e1114;border-bottom:1px solid #282f37}
+  .d-c .bar{background:#2a323b}
+  .d-c .bar.hl{background:#f0a35e;width:36%}
+  .d-c .blk{background:#181d22;border:1px solid #282f37}
+  .thumb .side{position:absolute;left:0;top:0;bottom:0;width:34px}
+  .d-a .thumb .side{background:#fff;border-right:1px solid #e4e7ee}
+  .d-b .thumb .side{background:#12211c}
+  .d-c .thumb .side{background:#12161a;border-right:1px solid #282f37;width:26px}
+  .thumb .inner{position:relative;padding-left:46px}
+  .d-c .thumb .inner{padding-left:36px}
+
+  .dir-body{padding:18px 18px 20px;display:flex;flex-direction:column;flex:1}
+  .tagline{font-size:11px;letter-spacing:.14em;color:var(--soft);margin-bottom:6px}
+  .dir-body h3{font-size:17px}
+  .dir-body .desc{font-size:13px;color:var(--ink-2);margin:9px 0 0;line-height:1.7}
+  .swatches{display:flex;gap:6px;margin:16px 0 12px}
+  .sw{width:26px;height:26px;border-radius:6px;border:1px solid rgba(0,0,0,.06)}
+  .type-sample{
+    margin-top:26px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:15px;line-height:1.5;
+  }
+  .d-a .type-sample{font-weight:600;letter-spacing:-.01em}
+  .d-b .type-sample{font-family:"Songti SC","Noto Serif SC",Georgia,serif;font-size:17px;letter-spacing:.02em}
+  .d-c .type-sample{font-weight:600;color:#e9eef4;text-shadow:0 0 18px rgba(240,163,94,.35)}
+  .d-c .type-sample-wrap{background:#141a22;margin:-14px -18px 0;padding:14px 18px 0;border-radius:0 0 0 0}
+  .pros{margin:14px 0 0;padding:0;list-style:none;font-size:12.5px;color:var(--ink-2)}
+  .pros li{padding-left:14px;position:relative;line-height:1.75}
+  .pros li::before{content:"·";position:absolute;left:3px;color:var(--soft)}
+  .pros li.warn::before{content:"!";left:3px;color:#c47a12;font-size:10px;font-weight:700}
+  .open{
+    margin-top:auto;padding-top:18px;display:flex;align-items:center;gap:8px;
+    font-size:13px;font-weight:600;color:#2b57d6;
+  }
+  .d-b .open{color:#1f6a56}
+  .d-c .open{color:#c97a2e}
+  .open svg{transition:transform .18s}
+  .dir:hover .open svg{transform:translateX(3px)}
+
+  /* section */
+  h2.sec{font-size:17px;margin:44px 0 6px;display:flex;align-items:center;gap:10px}
+  h2.sec .idx{font-size:11px;letter-spacing:.16em;color:var(--soft);font-weight:500}
+  .sec-desc{color:var(--soft);font-size:13px;margin:0 0 18px}
+
+  table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  th{text-align:left;font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--soft);padding:12px 16px;background:#fafbfc;border-bottom:1px solid var(--line)}
+  td{padding:13px 16px;border-bottom:1px solid #f0f2f5;font-size:13px;vertical-align:top;color:var(--ink-2)}
+  tr:last-child td{border-bottom:0}
+  td:first-child{color:var(--ink);font-weight:500;width:150px}
+  .score{display:inline-flex;gap:3px;align-items:center;font-size:12px;font-weight:600}
+  .dot{width:7px;height:7px;border-radius:50%;background:#dfe3ea}
+  .dot.f{background:#2b57d6}
+  .dot.h{background:#8fa5e8}
+  .d-b-row .dot.f{background:#1f6a56}
+  .d-b-row .dot.h{background:#89b9a9}
+
+  /* recommendation */
+  .reco{
+    margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px 28px;display:grid;grid-template-columns:1fr 300px;gap:32px;align-items:start;
+  }
+  .reco .badge{
+    display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.14em;color:#1f6a56;
+    background:#e8f0ec;border:1px solid rgba(31,106,86,.16);border-radius:4px;padding:3px 9px;margin-bottom:14px;
+  }
+  .reco h3{font-size:19px;line-height:1.5;margin-bottom:10px}
+  .reco p{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.85}
+  .formula{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:18px;font-size:12.5px;
+  }
+  .chip{padding:6px 11px;border-radius:6px;background:#f4f6f9;border:1px solid var(--line);color:var(--ink-2);font-weight:500}
+  .chip b{color:var(--ink)}
+  .plus{color:var(--soft);font-size:14px}
+  .reco-side{border-left:1px solid var(--line);padding-left:26px}
+  .reco-side .k{font-size:11px;letter-spacing:.14em;color:var(--soft);margin-bottom:10px}
+  .reco-side ol{margin:0;padding-left:16px;font-size:13px;color:var(--ink-2);line-height:1.95}
+  .reco-side li::marker{color:var(--soft);font-size:11px}
+
+  /* next steps */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+  .step{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .step .n{font-size:11px;letter-spacing:.14em;color:var(--soft)}
+  .step b{display:block;font-size:13.5px;margin:7px 0 5px}
+  .step span{font-size:12px;color:var(--soft);line-height:1.65}
+  .step.now{border-color:#b9c9f0;background:#fbfcff}
+  .step.now .n{color:#2b57d6}
+
+  .foot{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--soft);display:flex;gap:20px;flex-wrap:wrap}
+
+  @media (max-width:900px){
+    .grid{grid-template-columns:1fr}
+    .reco{grid-template-columns:1fr}
+    .reco-side{border-left:0;border-top:1px solid var(--line);padding:18px 0 0}
+    .steps{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <div class="eyebrow">LUMIINSIGHT · UI DIRECTION</div>
+      <h1>灯鉴界面设计 · 方向对比</h1>
+      <p>三套方向，同一份业务内容（同样的项目数据、同样的报告结论）。比较的是设计本身，不是内容差异。每套都可点开、可切换五个页面。</p>
+    </div>
+    <div class="meta">
+      <b>2026-10-30</b>
+      范围：整套产品<br>页面：登录 / 项目 / 详情 / 报告 / 管理
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- A -->
+    <a class="dir d-a" href="direction-a.html">
+      <div class="thumb">
+        <div class="side"></div>
+        <div class="inner">
+          <div class="bar hl"></div>
+          <div class="bar" style="width:70%"></div>
+          <div class="row" style="margin-top:14px">
+            <div class="blk" style="width:32%;height:40px"></div>
+            <div class="blk" style="width:32%;height:40px"></div>
+            <div class="blk" style="width:32%;height:40px"></div>
+          </div>
+          <div class="blk" style="width:100%;height:36px"></div>
+        </div>
+      </div>
+      <div class="dir-body">
+        <div class="tagline">DIRECTION A</div>
+        <h3>静数据</h3>
+        <p class="desc">冷灰底、白卡、靛蓝。按 B 端效率工具来做，信息密度高，一屏能扫完五行项目。</p>
+        <div class="swatches">
+          <div class="sw" style="background:#f5f6f9"></div>
+          <div class="sw" style="background:#ffffff"></div>
+          <div class="sw" style="background:#2b57d6"></div>
+          <div class="sw" style="background:#0f8a5f"></div>
+          <div class="sw" style="background:#cf4141"></div>
+        </div>
+        <div class="type-sample">亮度与频闪是负向评论的第一来源</div>
+        <ul class="pros">
+          <li>表格密度高，日常处理项目效率最好</li>
+          <li>蓝色是「工具」的安全选择，学习成本最低</li>
+          <li class="warn">报告页偏后台感，导出 PDF 不够像一份洞察</li>
+        </ul>
+        <div class="open">打开方向 A
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8h9M9 4.5 12.5 8 9 11.5"/></svg>
+        </div>
+      </div>
+    </a>
+
+    <!-- B -->
+    <a class="dir d-b" href="direction-b.html">
+      <div class="thumb">
+        <div class="side"></div>
+        <div class="inner">
+          <div class="bar hl"></div>
+          <div class="bar" style="width:64%"></div>
+          <div class="row" style="margin-top:14px">
+            <div class="blk" style="width:48%;height:56px"></div>
+            <div class="blk" style="width:48%;height:56px"></div>
+          </div>
+          <div class="blk" style="width:100%;height:22px"></div>
+        </div>
+      </div>
+      <div class="dir-body">
+        <div class="tagline">DIRECTION B</div>
+        <h3>纸鉴</h3>
+        <p class="desc">沿用现有纸感，但把报告做成真正像研报的样子：衬线标题、证据脚注、页边注。</p>
+        <div class="swatches">
+          <div class="sw" style="background:#efe9dd"></div>
+          <div class="sw" style="background:#fdfbf6"></div>
+          <div class="sw" style="background:#1f6a56"></div>
+          <div class="sw" style="background:#12211c"></div>
+          <div class="sw" style="background:#b0402f"></div>
+        </div>
+        <div class="type-sample">亮度与频闪是负向评论的第一来源</div>
+        <ul class="pros">
+          <li>报告可直接交给品类、甚至发给老板</li>
+          <li>与现有品牌一致，改造成本最低</li>
+          <li class="warn">密度略低，需要配合紧凑表格补效率</li>
+        </ul>
+        <div class="open">打开方向 B
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8h9M9 4.5 12.5 8 9 11.5"/></svg>
+        </div>
+      </div>
+    </a>
+
+    <!-- C -->
+    <a class="dir d-c" href="direction-c.html">
+      <div class="thumb">
+        <div class="side"></div>
+        <div class="inner">
+          <div class="bar hl"></div>
+          <div class="bar" style="width:58%"></div>
+          <div class="row" style="margin-top:14px">
+            <div class="blk" style="width:23%;height:38px"></div>
+            <div class="blk" style="width:23%;height:38px"></div>
+            <div class="blk" style="width:23%;height:38px"></div>
+            <div class="blk" style="width:23%;height:38px"></div>
+          </div>
+          <div class="blk" style="width:100%;height:34px"></div>
+        </div>
+      </div>
+      <div class="dir-body">
+        <div class="tagline">DIRECTION C</div>
+        <h3>暗房</h3>
+        <p class="desc">深色数据舱，暖光琥珀做主色。图表在暗底上更亮，适合长时间盯数据。</p>
+        <div class="swatches">
+          <div class="sw" style="background:#0e1114"></div>
+          <div class="sw" style="background:#181d22"></div>
+          <div class="sw" style="background:#f0a35e"></div>
+          <div class="sw" style="background:#5fd8ac"></div>
+          <div class="sw" style="background:#ff7f6e"></div>
+        </div>
+        <div class="type-sample-wrap"><div class="type-sample">亮度与频闪是负向评论的第一来源</div></div>
+        <ul class="pros" style="margin-top:22px">
+          <li>科技感最强，数据可视化最出彩</li>
+          <li class="warn">报告要导出给不看屏幕的人，深底不适用</li>
+          <li class="warn">整套做深色，工作量约等于重画所有页面</li>
+        </ul>
+        <div class="open">打开方向 C
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8h9M9 4.5 12.5 8 9 11.5"/></svg>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <h2 class="sec"><span class="idx">01</span>逐项比较</h2>
+  <p class="sec-desc">评分按灯鉴的真实使用场景给，不是通用审美排名。</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th style="width:26%">A 静数据</th>
+        <th style="width:26%">B 纸鉴</th>
+        <th style="width:26%">C 暗房</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>列表操作效率</td><td><span class="score"><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i><i class="dot"></i></span> 密集，扫得快</td><td><span class="score"><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i><i class="dot h"></i><i class="dot"></i></span> 留白多，单屏条数少</td><td><span class="score"><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i><i class="dot"></i></span> 紧凑</td></tr>
+      <tr class="d-b-row"><td>报告可交付感</td><td><span class="score"><i class="dot f"></i><i class="dot f"></i><i class="dot h"></i><i class="dot"></i><i class="dot"></i></span> 偏后台</td><td><span class="score"><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i></span> 像研报，能直接发</td><td><span class="score"><i class="dot f"></i><i class="dot f"></i><i class="dot h"></i><i class="dot"></i><i class="dot"></i></span> 屏幕内好看，导出不行</td></tr>
+      <tr><td>品牌一致性</td><td><span class="score"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></span> 全新一套</td><td><span class="score"><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i><i class="dot f"></i></span> 沿用现有</td><td><span class="score"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></span> 全新一套</td></tr>
+      <tr><td>落地改造成本</td><td>中：改 main.css + 组件层</td><td><b>低</b>：现有样式表增量调</td><td>高：几乎全部页面重画</td></tr>
+      <tr><td>长时间使用舒适度</td><td>好</td><td>好</td><td>暗底久看疲劳，白天会议室投屏失效</td></tr>
+      <tr><td>适合谁看</td><td>运营自己天天用</td><td>运营用，也给老板/客户看</td><td>偏数据团队、内部演示</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="sec"><span class="idx">02</span>我的建议</h2>
+  <p class="sec-desc">不做单选题。</p>
+
+  <div class="reco">
+    <div>
+      <div class="badge">推荐组合</div>
+      <h3>以「B 纸鉴」为主视觉，<br>把「A 静数据」的列表密度搬进 B。</h3>
+      <p>灯鉴的核心不是"看板"，是<strong>一份能交给品类和老板的结论</strong>。所以视觉重心应该在报告页，B 的衬线标题、证据脚注、页边注正好承担这件事，而且它跟现有品牌同源，改造成本最低。<br><br>但 B 目前的表格留白偏多，项目多起来会显得松散。A 的做法值得抄：行高收到 12px 上下、列宽按内容分配、状态用色点而不是整行变色。两套合起来，就是"报告像研报、列表像工具"。<br><br>C 不建议作为主方向。深色在做图表时确实好看，但报告最终要导出成 PDF 发出去，深底在打印和投屏上都不成立。如果要做，只建议做一版"夜间模式"作为可选开关，而不是主视觉。</p>
+      <div class="formula">
+        <span class="chip"><b>B</b> 的色彩与排版</span>
+        <span class="plus">+</span>
+        <span class="chip"><b>A</b> 的表格密度</span>
+        <span class="plus">+</span>
+        <span class="chip"><b>C</b> 的可视化表现力（仅图表）</span>
+      </div>
+    </div>
+    <div class="reco-side">
+      <div class="k">选定后我会做这三件事</div>
+      <ol>
+        <li>把方向固化成 Design Token（色板、字阶、间距、圆角、阴影）</li>
+        <li>补齐 `main.css` 里的组件状态：悬停、聚焦、禁用、加载、空状态</li>
+        <li>按 `PRODUCT_UI.md` 的页面骨架逐个改 Vue 页面，先改报告页</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2 class="sec"><span class="idx">03</span>接下来</h2>
+  <p class="sec-desc">先选方向，再动代码。原型里的交互都可以点。</p>
+
+  <div class="steps">
+    <div class="step now"><div class="n">NOW</div><b>你选方向</b><span>看三套原型，告诉我 A / B / C 或组合</span></div>
+    <div class="step"><div class="n">STEP 2</div><b>出 Token 表</b><span>色板、字阶、间距、组件状态一次定死</span></div>
+    <div class="step"><div class="n">STEP 3</div><b>改报告页</b><span>先做一个页面验证，跑通再铺开</span></div>
+    <div class="step"><div class="n">STEP 4</div><b>铺全套</b><span>列表、详情、管理、登录按同一套改完</span></div>
+  </div>
+
+  <div class="foot">
+    <span>原型文件：design/ui-directions/</span>
+    <span>现有规范：docs/ai/PRODUCT_UI.md</span>
+    <span>现有样式：apps/web/src/assets/main.css</span>
+  </div>
+</div>
+</body>
+</html>

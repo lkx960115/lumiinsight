@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>灯鉴 · 方向 A｜静数据</title>
+<style>
+  :root{
+    --bg:#f5f6f9;
+    --surface:#ffffff;
+    --surface-2:#fafbfd;
+    --line:#e4e7ee;
+    --line-soft:#eef1f6;
+    --ink:#141c26;
+    --ink-2:#3c4a5a;
+    --soft:#6b7889;
+    --accent:#2b57d6;
+    --accent-hover:#1f45b4;
+    --accent-soft:#eef3ff;
+    --pos:#0f8a5f;
+    --neg:#cf4141;
+    --warn:#c47a12;
+    --radius:8px;
+    --mono:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);color:var(--ink);
+    font:14px/1.55 -apple-system,"PingFang SC","Noto Sans SC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.01em}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- shell ---------- */
+  .shell{display:flex;min-height:100vh}
+  .side{
+    width:216px;flex:0 0 216px;background:var(--surface);
+    border-right:1px solid var(--line);padding:20px 12px;
+    display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;
+  }
+  .brand{display:flex;align-items:center;gap:9px;padding:0 8px 4px}
+  .brand .dot{
+    width:22px;height:22px;border-radius:6px;flex:0 0 22px;
+    background:linear-gradient(140deg,#3f6ee8,#1d3f9e);
+    position:relative;
+  }
+  .brand .dot::after{
+    content:"";position:absolute;inset:6px 6px auto 6px;height:3px;border-radius:2px;
+    background:rgba(255,255,255,.85);box-shadow:0 5px 0 rgba(255,255,255,.5);
+  }
+  .brand b{font-size:15px;letter-spacing:.02em}
+  .brand span{font-size:11px;color:var(--soft);letter-spacing:.08em}
+  .nav-group{display:flex;flex-direction:column;gap:2px}
+  .nav-label{font-size:11px;color:var(--soft);letter-spacing:.1em;padding:0 8px 6px}
+  .nav-item{
+    display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+    padding:8px 10px;border-radius:7px;color:var(--ink-2);font-size:13.5px;
+    transition:background .15s,color .15s;
+  }
+  .nav-item:hover{background:var(--surface-2);color:var(--ink)}
+  .nav-item.is-on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .nav-item .ico{width:15px;height:15px;flex:0 0 15px;opacity:.75}
+  .nav-item.is-on .ico{opacity:1}
+  .side-foot{margin-top:auto;padding:12px 10px 0;border-top:1px solid var(--line-soft);font-size:12px;color:var(--soft)}
+  .side-foot b{display:block;color:var(--ink);font-size:13px;font-weight:600}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{
+    height:56px;flex:0 0 56px;background:var(--surface);border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:16px;padding:0 28px;position:sticky;top:0;z-index:5;
+  }
+  .crumb{font-size:13px;color:var(--soft)}
+  .crumb b{color:var(--ink);font-weight:500}
+  .search{
+    margin-left:auto;display:flex;align-items:center;gap:8px;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:7px;
+    padding:6px 10px;width:260px;color:var(--soft);font-size:13px;
+  }
+  .kbd{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--soft);background:#fff}
+  .avatar{width:28px;height:28px;border-radius:50%;background:#dbe4f7;color:#2b57d6;display:grid;place-items:center;font-size:12px;font-weight:600}
+
+  .canvas{padding:26px 28px 56px;max-width:1180px;width:100%}
+  .view{display:none}
+  .view.is-on{display:block}
+
+  /* ---------- page head ---------- */
+  .head{display:flex;align-items:flex-start;gap:20px;margin-bottom:20px}
+  .head h1{font-size:21px;line-height:1.3}
+  .head p{margin:5px 0 0;color:var(--soft);font-size:13px}
+  .head .acts{margin-left:auto;display:flex;gap:8px;flex-shrink:0;padding-top:2px}
+  .btn{
+    height:34px;padding:0 14px;border-radius:7px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:500;
+    display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap;
+  }
+  .btn:hover{border-color:#c9d0dd;color:var(--ink)}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover);color:#fff}
+  .btn-text{border-color:transparent;background:transparent;color:var(--soft);padding:0 8px}
+  .btn-text:hover{background:var(--surface);color:var(--ink)}
+  .btn-sm{height:28px;padding:0 10px;font-size:12.5px;border-radius:6px}
+
+  /* ---------- kpi ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+  .kpi .k{font-size:12px;color:var(--soft);display:flex;align-items:center;gap:6px}
+  .kpi .v{font-size:26px;font-weight:600;letter-spacing:-.02em;margin-top:6px;line-height:1.1}
+  .kpi .v small{font-size:13px;font-weight:500;color:var(--soft);margin-left:4px}
+  .kpi .d{font-size:12px;margin-top:5px;color:var(--soft)}
+  .up{color:var(--pos)}
+  .down{color:var(--neg)}
+
+  /* ---------- table ---------- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .card-head{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line-soft)}
+  .card-head h3{font-size:14px}
+  .card-head .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .toolbar{display:flex;gap:8px;align-items:center}
+  .field{
+    height:32px;border:1px solid var(--line);border-radius:7px;background:var(--surface);
+    padding:0 10px;font:inherit;font-size:13px;color:var(--ink-2);min-width:120px;
+  }
+  .field::placeholder{color:#9aa5b5}
+  table{width:100%;border-collapse:collapse}
+  th{
+    text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--soft);
+    padding:9px 16px;background:var(--surface-2);border-bottom:1px solid var(--line-soft);
+  }
+  td{padding:12px 16px;border-bottom:1px solid var(--line-soft);font-size:13.5px;vertical-align:middle}
+  tbody tr:hover{background:#fbfcfe}
+  tbody tr:last-child td{border-bottom:0}
+  .t-main{font-weight:600;color:var(--ink)}
+  .t-sub{font-size:12px;color:var(--soft);margin-top:2px}
+  .link{color:var(--accent);cursor:pointer}
+  .link:hover{text-decoration:underline}
+  .state{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+  .state i{width:6px;height:6px;border-radius:50%;background:var(--soft);display:block}
+  .state.ok{color:var(--pos)} .state.ok i{background:var(--pos)}
+  .state.neg{color:var(--neg)} .state.neg i{background:var(--neg)}
+  .state.warn{color:var(--warn)} .state.warn i{background:var(--warn)}
+  .state.run i{background:var(--accent);animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .mono{font-family:var(--mono);font-size:12px;color:var(--soft)}
+  .row-act{display:flex;gap:2px;justify-content:flex-end}
+  .row-act button{font-size:13px;color:var(--accent);padding:3px 6px;border-radius:5px}
+  .row-act button:hover{background:var(--accent-soft)}
+  .pager{display:flex;align-items:center;gap:6px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line-soft);font-size:12.5px;color:var(--soft)}
+  .pg{min-width:26px;height:26px;border-radius:6px;display:grid;place-items:center;padding:0 6px}
+  .pg.on{background:var(--accent);color:#fff}
+  .pg:not(.on):hover{background:var(--surface-2)}
+
+  /* ---------- misc blocks ---------- */
+  .cols{display:grid;gap:14px}
+  .g2{grid-template-columns:1.35fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .pad{padding:16px}
+  .drop{
+    border:1px dashed #c6cfdd;border-radius:var(--radius);background:var(--surface-2);
+    padding:22px;text-align:center;color:var(--soft);font-size:13px;
+  }
+  .drop b{display:block;color:var(--ink);font-size:14px;margin-bottom:4px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px}
+  .step{border:1px solid var(--line-soft);border-radius:7px;padding:12px;background:var(--surface-2)}
+  .step .no{font-family:var(--mono);font-size:11px;color:var(--soft)}
+  .step b{display:block;margin:4px 0 3px;font-size:13.5px}
+  .step span{font-size:12px;color:var(--soft)}
+  .alert{display:flex;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line-soft)}
+  .alert:last-child{border-bottom:0}
+  .alert .tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;height:20px;flex-shrink:0;margin-top:1px}
+  .tag.neg{background:#fdeeee;color:var(--neg)}
+  .tag.warn{background:#fdf4e5;color:var(--warn)}
+  .tag.pos{background:#eaf6f0;color:var(--pos)}
+  .alert p{margin:0;font-size:13px;color:var(--ink-2)}
+  .alert .ev{font-size:11.5px;color:var(--soft);margin-top:4px;font-family:var(--mono)}
+
+  .chart-bars{display:flex;flex-direction:column;gap:11px;padding:16px}
+  .bar-row{display:grid;grid-template-columns:78px 1fr 44px;gap:10px;align-items:center;font-size:12.5px}
+  .bar{height:7px;border-radius:4px;background:var(--line-soft);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:4px;background:var(--accent)}
+  .bar i.n{background:#cf4141}
+  .bar-row .v{text-align:right;color:var(--soft);font-family:var(--mono);font-size:11.5px}
+
+  /* ---------- report ---------- */
+  .report-grid{display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start}
+  .claim{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px}
+  .claim h4{font-size:14.5px;line-height:1.5;margin-bottom:8px}
+  .claim p{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.7}
+  .evs{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .ev{font-family:var(--mono);font-size:11.5px;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:2px 7px;cursor:pointer}
+  .side-note{font-size:12px;color:var(--soft);border-left:2px solid var(--line);padding-left:10px;margin-top:10px}
+
+  .ask{position:fixed;right:0;top:120px;width:34px;background:#1b2430;color:#e8eef7;border-radius:8px 0 0 8px;writing-mode:vertical-rl;padding:16px 0;text-align:center;font-size:12.5px;letter-spacing:.16em;cursor:pointer}
+
+  /* ---------- admin ---------- */
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px}
+  .tab{padding:9px 14px;font-size:13.5px;color:var(--soft);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+
+  /* ---------- login ---------- */
+  .login-wrap{display:grid;grid-template-columns:1fr 420px;min-height:100vh}
+  .login-art{background:#111a26;color:#c9d6e8;padding:56px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+  .login-art::after{
+    content:"";position:absolute;width:520px;height:520px;right:-160px;bottom:-220px;border-radius:50%;
+    background:radial-gradient(circle,rgba(74,110,232,.35),transparent 65%);
+  }
+  .login-art h2{font-size:30px;line-height:1.35;color:#fff;max-width:16em}
+  .login-art p{color:#8fa2bb;font-size:13.5px;max-width:30em;line-height:1.8}
+  .login-art .meta{font-size:12px;color:#6f819b;letter-spacing:.1em}
+  .login-form{background:var(--surface);display:flex;flex-direction:column;justify-content:center;padding:0 56px}
+  .login-form h3{font-size:19px}
+  .lf-field{margin-top:18px}
+  .lf-field label{display:block;font-size:12.5px;color:var(--soft);margin-bottom:6px}
+  .lf-field input{width:100%;height:40px;border:1px solid var(--line);border-radius:7px;padding:0 12px;font:inherit;font-size:14px;background:var(--surface-2)}
+  .lf-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(43,87,214,.12)}
+  .login-form .btn-primary{width:100%;height:40px;justify-content:center;margin-top:22px}
+  .login-form .tip{margin-top:14px;font-size:12px;color:var(--soft);text-align:center}
+
+  @media (max-width:1080px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .report-grid{grid-template-columns:1fr}
+    .g2{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand">
+      <div class="dot"></div>
+      <div><b>灯鉴</b><br><span>LUMIINSIGHT</span></div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">工作台</div>
+      <button class="nav-item is-on" data-view="projects">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="3.4" rx="1"/><rect x="2" y="9.6" width="12" height="3.4" rx="1"/></svg>
+        项目
+      </button>
+      <button class="nav-item" data-view="detail">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2.5h7l3 3v8H3z"/><path d="M10 2.5v3h3"/></svg>
+        项目详情
+      </button>
+      <button class="nav-item" data-view="report">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 13V7M8 13V3M13 13V9"/></svg>
+        洞察报告
+      </button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">系统管理</div>
+      <button class="nav-item" data-view="admin">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 2v1.6M8 12.4V14M2 8h1.6M12.4 8H14M3.8 3.8l1.1 1.1M11.1 11.1l1.1 1.1M12.2 3.8l-1.1 1.1M4.9 11.1l-1.1 1.1"/></svg>
+        用户与日志
+      </button>
+      <button class="nav-item" data-view="login">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 2.5H3.5v11H6"/><path d="M9 5.5 11.5 8 9 10.5M11.5 8H6.5"/></svg>
+        登录页
+      </button>
+    </div>
+
+    <div class="side-foot">
+      <b>于丽洁</b>
+      品类运营 · 已登录
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">工作台 / <b id="crumb">项目</b></div>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5"/></svg>
+        搜索项目、评论原文
+        <span class="kbd" style="margin-left:auto">⌘K</span>
+      </div>
+      <div class="avatar">于</div>
+    </header>
+
+    <div class="canvas">
+
+      <!-- ============ 项目列表 ============ -->
+      <section class="view is-on" id="view-projects">
+        <div class="head">
+          <div>
+            <h1>项目</h1>
+            <p>一个项目对应一组本店与竞品评价。导入后清洗并分析，结论在报告里。</p>
+          </div>
+          <div class="acts">
+            <button class="btn btn-text">刷新</button>
+            <button class="btn btn-primary">新建项目</button>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="k">有效评论</div>
+            <div class="v num">1,284<small>条</small></div>
+            <div class="d">跨 3 个项目 · 已去重</div>
+          </div>
+          <div class="kpi">
+            <div class="k">正向占比</div>
+            <div class="v num">62<small>%</small></div>
+            <div class="d"><span class="up">↑ 3.2 pt</span> 较上周期</div>
+          </div>
+          <div class="kpi">
+            <div class="k">待处理负向</div>
+            <div class="v num">27<small>条</small></div>
+            <div class="d">集中在频闪、显色</div>
+          </div>
+          <div class="kpi">
+            <div class="k">覆盖平台</div>
+            <div class="v num">4<small>个</small></div>
+            <div class="d">小红书 · 京东 · 天猫 · 抖音</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>全部项目</h3>
+            <div class="r toolbar">
+              <select class="field"><option>全部品类</option><option>吸顶灯</option><option>落地灯</option></select>
+              <input class="field" placeholder="搜索项目名或型号" style="width:200px">
+              <button class="btn btn-sm">查询</button>
+              <button class="btn btn-text btn-sm">重置</button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:30%">项目</th>
+                <th>品类</th>
+                <th>角色</th>
+                <th>平台</th>
+                <th style="width:15%">状态</th>
+                <th>最近更新</th>
+                <th style="text-align:right;width:110px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="t-main link">演示吸顶灯</div><div class="t-sub">有效评论 842 条 · 1,000 条导入</div></td>
+                <td>吸顶灯</td><td>本店</td><td>小红书 · 京东</td>
+                <td><span class="state ok"><i></i>分析完成</span></td>
+                <td class="mono">10-28 15:48</td>
+                <td><div class="row-act"><button>打开</button><button>更多</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="t-main link">星辉竞品灯</div><div class="t-sub">有效评论 442 条 · 500 条导入</div></td>
+                <td>吸顶灯</td><td>竞品</td><td>京东 · 天猫</td>
+                <td><span class="state ok"><i></i>分析完成</span></td>
+                <td class="mono">10-28 15:52</td>
+                <td><div class="row-act"><button>打开</button><button>更多</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="t-main link">暮光落地灯</div><div class="t-sub">有效评论 316 条 · 导入中</div></td>
+                <td>落地灯</td><td>本店</td><td>小红书</td>
+                <td><span class="state run"><i></i>正在清洗</span></td>
+                <td class="mono">10-30 10:12</td>
+                <td><div class="row-act"><button>打开</button><button>更多</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="t-main link">岩板台灯</div><div class="t-sub">0 条有效 · 表头缺少「评论内容」列</div></td>
+                <td>台灯</td><td>竞品</td><td>—</td>
+                <td><span class="state neg"><i></i>导入失败</span></td>
+                <td class="mono">10-29 09:03</td>
+                <td><div class="row-act"><button>重试</button><button>更多</button></div></td>
+              </tr>
+              <tr>
+                <td><div class="t-main link">云栖吊灯</div><div class="t-sub">有效评论 126 条 · 尚未分析</div></td>
+                <td>吊灯</td><td>本店</td><td>小红书 · 抖音</td>
+                <td><span class="state"><i></i>待分析</span></td>
+                <td class="mono">10-27 18:20</td>
+                <td><div class="row-act"><button>打开</button><button>更多</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pager">
+            <span>共 5 条</span>
+            <button class="pg">‹</button>
+            <button class="pg on">1</button>
+            <button class="pg">›</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 项目详情 ============ -->
+      <section class="view" id="view-detail">
+        <div class="head">
+          <div>
+            <div class="crumb" style="margin-bottom:6px">项目 / <b>演示吸顶灯</b></div>
+            <h1>演示吸顶灯</h1>
+            <p>吸顶灯 · 本店 · 小红书 京东 · 建于 2026-10-20</p>
+          </div>
+          <div class="acts">
+            <button class="btn btn-text">刷新</button>
+            <button class="btn" data-goto="report">查看报告</button>
+            <button class="btn btn-primary">清洗并分析</button>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="k">导入总数</div><div class="v num">1,000</div><div class="d">2 个文件</div></div>
+          <div class="kpi"><div class="k">有效评论</div><div class="v num">842</div><div class="d">重复 158 条已剔除</div></div>
+          <div class="kpi"><div class="k">已打标</div><div class="v num">842<small>/842</small></div><div class="d">情感与方面均已识别</div></div>
+          <div class="kpi"><div class="k">最近分析</div><div class="v num" style="font-size:19px">10-28 15:48</div><div class="d">耗时 2 分 14 秒</div></div>
+        </div>
+
+        <div class="cols g2" style="margin-bottom:14px">
+          <div class="card">
+            <div class="card-head"><h3>导入评价</h3><div class="r"><button class="btn btn-text btn-sm">下载样例</button></div></div>
+            <div class="pad">
+              <div class="drop">
+                <b>把评价表拖到这里，或点击选择文件</b>
+                支持 .xlsx / .csv，需含「评论内容」列；单次不超过 5 万行
+              </div>
+              <table style="margin-top:14px">
+                <thead><tr><th>文件</th><th>行数</th><th>状态</th><th>时间</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td class="t-main">本店评价_10月.xlsx</td><td class="num">700</td><td><span class="state ok"><i></i>已清洗</span></td><td class="mono">10-28 15:31</td><td><div class="row-act"><button>查看</button></div></td></tr>
+                  <tr><td class="t-main">本店评价_9月.xlsx</td><td class="num">300</td><td><span class="state ok"><i></i>已清洗</span></td><td class="mono">10-28 15:02</td><td><div class="row-act"><button>查看</button></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>口碑预警</h3><div class="r"><span class="t-sub">近 30 天</span></div></div>
+            <div class="alert">
+              <span class="tag neg">负向变多</span>
+              <div><p>「频闪」提及比上周期多 41%，多出现在夜间使用的评论里。</p><div class="ev">E-0142 · E-0108 · E-0231</div></div>
+            </div>
+            <div class="alert">
+              <span class="tag warn">新槽点</span>
+              <div><p>遥控器配对延迟首次集中出现，共 9 条。</p><div class="ev">E-0305 · E-0312</div></div>
+            </div>
+            <div class="alert">
+              <span class="tag pos">卖点稳固</span>
+              <div><p>「显色好」正向提及连续 3 个周期上升。</p><div class="ev">E-0077 · E-0155</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-head"><h3>分析流水线</h3><div class="r"><span class="t-sub">上次运行：清洗 → 情感 → 方面识别 → 汇总</span></div></div>
+          <div class="steps">
+            <div class="step"><div class="no">01</div><b>清洗</b><span>去重 158 条，剔除广告 64 条、过短 36 条</span></div>
+            <div class="step"><div class="no">02</div><b>情感与方面</b><span>842 条已标注，识别 6 个方面</span></div>
+            <div class="step"><div class="no">03</div><b>汇总成报告</b><span>结论 11 条，均带证据编号</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>店铺同步</h3><div class="r"><button class="btn btn-sm">同步四个平台</button></div></div>
+          <table>
+            <thead><tr><th>平台</th><th>店铺</th><th>状态</th><th>时间</th><th style="text-align:right">操作</th></tr></thead>
+            <tbody>
+              <tr><td class="t-main">小红书</td><td>灯鉴旗舰店</td><td><span class="state ok"><i></i>已同步</span><div class="t-sub">本次 320 条</div></td><td class="mono">10-28 15:20</td><td><div class="row-act"><button>同步</button><button>导入文件</button></div></td></tr>
+              <tr><td class="t-main">京东</td><td>灯鉴自营旗舰店</td><td><span class="state ok"><i></i>已同步</span><div class="t-sub">本次 210 条</div></td><td class="mono">10-28 15:22</td><td><div class="row-act"><button>同步</button><button>导入文件</button></div></td></tr>
+              <tr><td class="t-main">天猫</td><td>—</td><td><span class="state"><i></i>未授权</span></td><td class="mono">—</td><td><div class="row-act"><button>去授权</button></div></td></tr>
+              <tr><td class="t-main">抖音</td><td>灯鉴官方店</td><td><span class="state warn"><i></i>同步中</span></td><td class="mono">10-30 11:02</td><td><div class="row-act"><button>同步</button></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ 报告 ============ -->
+      <section class="view" id="view-report">
+        <div class="head">
+          <div>
+            <div class="crumb" style="margin-bottom:6px">演示吸顶灯 / <b>洞察报告</b></div>
+            <h1>消费者洞察报告</h1>
+            <p>基于 842 条有效评论 · 覆盖 2026-09-01 至 2026-10-28 · 结论均附证据编号</p>
+          </div>
+          <div class="acts">
+            <button class="btn btn-text">返回项目</button>
+            <button class="btn">问原评</button>
+            <button class="btn btn-primary">导出</button>
+          </div>
+        </div>
+
+        <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+          <div class="kpi"><div class="k">有效评论</div><div class="v num">842</div><div class="d">去重后口径</div></div>
+          <div class="kpi"><div class="k">正向</div><div class="v num" style="color:#0f8a5f">62<small>%</small></div><div class="d">523 条</div></div>
+          <div class="kpi"><div class="k">负向</div><div class="v num" style="color:#cf4141">21<small>%</small></div><div class="d">177 条</div></div>
+          <div class="kpi"><div class="k">中性</div><div class="v num">17<small>%</small></div><div class="d">142 条</div></div>
+        </div>
+
+        <div class="report-grid">
+          <div>
+            <div class="claim">
+              <h4>亮度与频闪是负向评论的第一来源，占负向的 38%</h4>
+              <p>用户并非嫌「不够亮」，而是抱怨「看着亮但看久了累」。87 条负向里，41 条把刺眼归因于可视频闪，多在夜间、近距离使用场景出现。</p>
+              <div class="evs"><span class="ev">E-0142</span><span class="ev">E-0108</span><span class="ev">E-0231</span><span class="ev">E-0188</span></div>
+              <div class="side-note">建议：详情页补一张「无频闪」实测图，比参数表更有效。</div>
+            </div>
+
+            <div class="claim">
+              <h4>显色与照度是唯一被反复提到的购买理由</h4>
+              <p>「照在饭菜上颜色正」「化妆不用额外补光」这类表述出现在 96 条正向评论中，且连续三个周期上升，是可以直接做成卖点的点。</p>
+              <div class="evs"><span class="ev">E-0077</span><span class="ev">E-0155</span><span class="ev">E-0290</span></div>
+            </div>
+
+            <div class="claim">
+              <h4>竞品在「安装简易」上明显领先</h4>
+              <p>星辉竞品灯安装相关负向只占 6%，本店为 19%。本店评论里「要两个人扶」「说明书看不懂」反复出现，属于可短期改善的体验缺口。</p>
+              <div class="evs"><span class="ev">E-0301</span><span class="ev">E-0344</span></div>
+            </div>
+
+            <div class="card" style="margin-top:14px">
+              <div class="card-head"><h3>竞品对照</h3></div>
+              <table>
+                <thead><tr><th>对象</th><th>有效评论</th><th>正向</th><th>负向</th><th>中性</th><th>主要痛点</th></tr></thead>
+                <tbody>
+                  <tr><td class="t-main">演示吸顶灯</td><td class="num">842</td><td class="num" style="color:#0f8a5f">62%</td><td class="num" style="color:#cf4141">21%</td><td class="num">17%</td><td>频闪、安装要两个人</td></tr>
+                  <tr><td class="t-main">星辉竞品灯</td><td class="num">442</td><td class="num" style="color:#0f8a5f">55%</td><td class="num" style="color:#cf4141">28%</td><td class="num">17%</td><td>色温偏冷、遥控延迟</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <div class="card">
+              <div class="card-head"><h3>方面分布</h3></div>
+              <div class="chart-bars">
+                <div class="bar-row"><span>亮度</span><div class="bar"><i style="width:82%;background:#0f8a5f"></i></div><span class="v">82%</span></div>
+                <div class="bar-row"><span>显色</span><div class="bar"><i style="width:64%;background:#0f8a5f"></i></div><span class="v">64%</span></div>
+                <div class="bar-row"><span>频闪</span><div class="bar"><i class="n" style="width:47%"></i></div><span class="v">47%</span></div>
+                <div class="bar-row"><span>安装</span><div class="bar"><i class="n" style="width:31%"></i></div><span class="v">31%</span></div>
+                <div class="bar-row"><span>外观</span><div class="bar"><i style="width:28%;background:#0f8a5f"></i></div><span class="v">28%</span></div>
+                <div class="bar-row"><span>遥控</span><div class="bar"><i class="n" style="width:12%"></i></div><span class="v">12%</span></div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:14px">
+              <div class="card-head"><h3>问原评</h3></div>
+              <div class="pad" style="font-size:13px">
+                <p style="margin:0 0 10px;color:var(--soft);font-size:12.5px">试试这样问：</p>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <span class="ev" style="display:inline-block;width:fit-content">有没有人抱怨频闪？</span>
+                  <span class="ev" style="display:inline-block;width:fit-content">为什么说安装难？</span>
+                  <span class="ev" style="display:inline-block;width:fit-content">哪些评论提到显色？</span>
+                </div>
+                <p style="margin:14px 0 0;line-height:1.7;color:var(--ink-2)">有 27 条提到频闪，集中在夜间使用的场景：「开着手机摄像头能看到波纹」。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ask">问原评</div>
+      </section>
+
+      <!-- ============ 系统管理 ============ -->
+      <section class="view" id="view-admin">
+        <div class="head">
+          <div><h1>系统管理</h1><p>账号、任务日志与模型用量。这里的数据给管理员看，不对外。</p></div>
+          <div class="acts"><button class="btn btn-text">刷新</button><button class="btn btn-primary">新增用户</button></div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab on">用户</button>
+          <button class="tab">任务日志</button>
+          <button class="tab">操作日志</button>
+          <button class="tab">模型用量</button>
+        </div>
+
+        <div class="card">
+          <table>
+            <thead><tr><th>姓名</th><th>账号</th><th>角色</th><th>状态</th><th>最近登录</th><th style="text-align:right">操作</th></tr></thead>
+            <tbody>
+              <tr><td class="t-main">于丽洁</td><td class="mono">yulijie</td><td>管理员</td><td><span class="state ok"><i></i>启用</span></td><td class="mono">10-30 10:58</td><td><div class="row-act"><button>编辑</button><button>重置密码</button></div></td></tr>
+              <tr><td class="t-main">王晨曦</td><td class="mono">wangchenxi</td><td>品类运营</td><td><span class="state ok"><i></i>启用</span></td><td class="mono">10-30 09:21</td><td><div class="row-act"><button>编辑</button><button>重置密码</button></div></td></tr>
+              <tr><td class="t-main">李岩</td><td class="mono">liyan</td><td>只读</td><td><span class="state"><i></i>停用</span></td><td class="mono">09-12 14:07</td><td><div class="row-act"><button>编辑</button><button>重置密码</button></div></td></tr>
+            </tbody>
+          </table>
+          <div class="pager"><span>共 3 条</span><button class="pg">‹</button><button class="pg on">1</button><button class="pg">›</button></div>
+        </div>
+      </section>
+
+      <!-- ============ 登录 ============ -->
+      <section class="view" id="view-login" style="margin:-26px -28px -56px">
+        <div class="login-wrap">
+          <div class="login-art">
+            <div>
+              <div class="meta" style="margin-bottom:18px">LUMIINSIGHT</div>
+              <h2>把几万条灯具评论，<br>读成一张能交付的结论表。</h2>
+              <p style="margin-top:16px">采集、清洗、情感与方面分析，最后落成带证据编号的报告。每个结论都能点回原评。</p>
+            </div>
+            <div class="meta">灯鉴 · 消费者洞察平台</div>
+          </div>
+          <div class="login-form">
+            <h3>登录</h3>
+            <p style="color:var(--soft);font-size:13px;margin:6px 0 0">使用公司账号，忘记密码请联系管理员。</p>
+            <div class="lf-field"><label>账号</label><input value="yulijie"></div>
+            <div class="lf-field"><label>密码</label><input type="password" value="········"></div>
+            <button class="btn btn-primary">登录</button>
+            <div class="tip">首次登录会要求修改初始密码</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const titles = { projects:'项目', detail:'项目详情', report:'洞察报告', admin:'系统管理', login:'登录' };
+  function go(id){
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('is-on', v.id === 'view-' + id));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('is-on', n.dataset.view === id));
+    document.getElementById('crumb').textContent = titles[id] || '';
+    window.scrollTo({ top: 0 });
+  }
+  document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => go(n.dataset.view)));
+  document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => go(b.dataset.goto)));
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+  }));
+  const init = location.hash.replace('#', '');
+  if (titles[init]) go(init);
+</script>
+</body>
+</html>
