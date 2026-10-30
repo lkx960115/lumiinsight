@@ -9,6 +9,7 @@
         <el-menu-item v-if="auth.has('admin:user:view')" index="/admin/users">用户角色</el-menu-item>
         <el-menu-item v-if="auth.has('admin:llm:view')" index="/admin/llm">模型配置</el-menu-item>
         <el-menu-item v-if="auth.has('admin:llm:view')" index="/admin/usage">用量</el-menu-item>
+        <el-menu-item v-if="auth.has('admin:datasource:view')" index="/admin/datasource">数据服务</el-menu-item>
         <el-menu-item v-if="auth.has('admin:job:view')" index="/admin/jobs">任务日志</el-menu-item>
         <el-menu-item v-if="auth.has('admin:dict:view')" index="/admin/dicts">方面词典</el-menu-item>
         <el-menu-item v-if="auth.has('admin:audit:view')" index="/admin/audit">操作日志</el-menu-item>
