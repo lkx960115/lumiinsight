@@ -134,6 +134,19 @@
     </el-dialog>
 
     <el-dialog v-model="cVisible" title="配置平台接口" width="640px">
+      <div v-if="currentProvider?.channels?.length" class="ds-existing">
+        <span class="muted">已配通道（点一条可直接改）：</span>
+        <el-tag
+          v-for="c in currentProvider.channels"
+          :key="c.id"
+          class="ds-tag"
+          effect="plain"
+          :type="c.platform === cForm.platform ? 'success' : 'info'"
+          @click="editChannel(c)"
+        >
+          {{ platformLabel(c.platform) }} · {{ c.endpointPath }}
+        </el-tag>
+      </div>
       <el-form label-width="108px">
         <el-form-item label="平台">
           <el-select v-model="cForm.platform" style="width: 100%" placeholder="选择平台">
@@ -224,6 +237,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import http from '@/api/http'
+import { ElMessage } from 'element-plus'
 import { platformLabel } from '@/utils/labels'
 
 const PLATFORMS = [
@@ -380,9 +394,14 @@ async function toggleProvider(row: any, val: number) {
 
 function openChannel(row: any) {
   currentProvider.value = row
-  const first = (row.channels || [])[0]
-  Object.assign(cForm, first ? { ...first, reviewMapping: pretty(first.reviewMapping) } : emptyChannel())
+  const used = new Set((row.channels || []).map((c: any) => c.platform))
+  const next = PLATFORMS.find((p) => !used.has(p.code))?.code || 'jd'
+  Object.assign(cForm, emptyChannel(next), { id: null })
   cVisible.value = true
+}
+
+function editChannel(ch: any) {
+  Object.assign(cForm, emptyChannel(), { ...ch, reviewMapping: pretty(ch.reviewMapping) })
 }
 
 function pretty(json: string) {
@@ -394,9 +413,14 @@ function pretty(json: string) {
 }
 
 async function saveChannel() {
-  await http.put(`/admin/datasource/providers/${currentProvider.value.id}/channels`, { ...cForm })
-  cVisible.value = false
-  await load()
+  try {
+    await http.put(`/admin/datasource/providers/${currentProvider.value.id}/channels`, { ...cForm })
+    cVisible.value = false
+    ElMessage.success('已保存')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '保存失败，请检查必填项')
+  }
 }
 
 function openTest(row: any) {

@@ -80,8 +80,21 @@ NEG_WORDS = (
     "不满",
     "失望",
     "漏光",
+    # 亮度相关：否定式与暗光表述（D2 补充，与词典关键词同步）
+    "不够",
+    "不亮",
+    "偏暗",
+    "发暗",
+    "昏暗",
+    "暗淡",
+    "光线暗",
+    "越来越暗",
+    "照不亮",
+    "光衰",
 )
-NEGATORS = ("没有", "无", "不是")
+NEGATORS = ("没有", "无", "不是", "未曾")
+# 单字否定词：只在紧贴命中词（前 2 字）时生效，避免「不错」之类被误判
+NEG_PARTICLES = ("不", "没")
 ALLOWED_SENT = {"pos", "neg", "neu"}
 
 
@@ -116,14 +129,23 @@ def clause_of(text: str, keyword: str) -> str:
     return text or ""
 
 
+def negated_near(chunk: str, hit: str, width: int = 2) -> bool:
+    """判断命中词是否紧跟在否定词之后，如「不够亮」里的「够亮」、「不刺眼」里的「刺眼」。"""
+    at = chunk.find(hit)
+    if at < 0:
+        return False
+    before = chunk[max(0, at - width) : at]
+    return any(token in before for token in NEG_PARTICLES) or any(token in before for token in NEGATORS)
+
+
 def window_polarity(text: str, keyword: str) -> tuple[str, str, float]:
     chunk = clause_of(text, keyword)
     idx = chunk.find(keyword)
     if idx < 0:
         return "neu", "未写明倾向", 0.55
     prefix = chunk[:idx]
-    pos_hit = next((word for word in POS_WORDS if word in chunk), None)
-    neg_hit = next((word for word in NEG_WORDS if word in chunk), None)
+    pos_hit = next((word for word in POS_WORDS if word in chunk and not negated_near(chunk, word)), None)
+    neg_hit = next((word for word in NEG_WORDS if word in chunk and not negated_near(chunk, word)), None)
     inverted = any(token in prefix for token in NEGATORS)
     if pos_hit and neg_hit:
         pos_at = chunk.find(pos_hit)

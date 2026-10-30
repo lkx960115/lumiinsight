@@ -72,6 +72,47 @@ class AbsaTest(unittest.TestCase):
         self.assertEqual("pos", by_name(item)["售后"]["sentiment"])
         self.assertEqual("rule", item["source"])
 
+    def test_negated_positive_word_is_not_positive(self):
+        """D1：「不够亮」曾被 NEGATORS 漏掉而判为正向。"""
+        rows = [{"id": 1, "content": "客厅装上后明显不够亮，晚上看手机都费劲"}]
+        result = analyze_reviews(rows, ASPECTS)
+        self.assertEqual("neg", by_name(result["items"][0])["亮度"]["sentiment"])
+
+    def test_short_negative_form_is_negative(self):
+        """D1 延伸：「亮度不够」这类省略式也应判负向。"""
+        rows = [{"id": 1, "content": "亮度不够，餐桌上面那块还是暗的"}]
+        result = analyze_reviews(rows, ASPECTS)
+        self.assertEqual("neg", by_name(result["items"][0])["亮度"]["sentiment"])
+
+    def test_darkness_words_hit_brightness_as_negative(self):
+        """D2：暗光类表述应命中亮度并判负向。"""
+        texts = [
+            "卧室有点偏暗，看书还是不太行",
+            "用了半年感觉发暗，没有刚买时亮",
+            "这个瓦数根本照不亮客厅",
+            "晚上开着还是觉得昏暗",
+            "灯光越来越暗，估计是光衰",
+        ]
+        for text in texts:
+            with self.subTest(text=text):
+                result = analyze_reviews([{"id": 1, "content": text}], ASPECTS)
+                got = by_name(result["items"][0])
+                self.assertIn("亮度", got)
+                self.assertEqual("neg", got["亮度"]["sentiment"])
+
+    def test_positive_brightness_not_broken_by_fix(self):
+        """修复不得误伤正向判定。"""
+        rows = [{"id": 1, "content": "亮度够用，客厅晚上很舒服"}]
+        result = analyze_reviews(rows, ASPECTS)
+        self.assertEqual("pos", by_name(result["items"][0])["亮度"]["sentiment"])
+
+    def test_negated_negative_word_is_not_negative(self):
+        """否定词紧贴负向词时不得判负向（「不刺眼」是正面表述）。"""
+        from app.absa import window_polarity
+
+        sentiment, _, _ = window_polarity("客厅亮度可以，不刺眼", "刺眼")
+        self.assertNotEqual("neg", sentiment)
+
     def test_unique_reviews_collapses_duplicates(self):
         from app.absa import unique_reviews, copy_by_content
 
