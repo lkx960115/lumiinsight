@@ -37,6 +37,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useThemeStore } from '@/stores/theme'
 
 type AspectItem = { name: string; total: number; pos: number; neg: number; neu: number }
 type MonthItem = { label: string; pos: number; neg: number; neu: number }
@@ -62,7 +63,25 @@ let pieChart: EChartsLike | null = null
 let barChart: EChartsLike | null = null
 let trendChart: EChartsLike | null = null
 
-const COLORS = { pos: '#1f6a56', neg: '#b4533a', neu: '#8a9a94' }
+const theme = useThemeStore()
+
+/** 图表颜色跟着当前主题走，不写死色值 */
+function token(name: string, fallback: string) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return value || fallback
+}
+
+function palette() {
+  return {
+    pos: token('--pos', '#1f6a56'),
+    neg: token('--neg', '#b0402f'),
+    neu: token('--ink-soft', '#8a9a94'),
+    surface: token('--surface', '#fdfbf6'),
+    ink: token('--ink', '#1b2a25'),
+    soft: token('--ink-soft', '#6f7c74'),
+    line: token('--line', 'rgba(27,42,37,.14)'),
+  }
+}
 
 const hasSentiment = computed(() => {
   const o = props.overview
@@ -141,18 +160,21 @@ function render() {
     trendChart = null
     return
   }
+  const c = palette()
+  const fontBody = token('--font-body', 'sans-serif')
   if (pieEl.value) {
     pieChart = pieChart || api.init(pieEl.value)
     pieChart.setOption({
-      color: [COLORS.pos, COLORS.neg, COLORS.neu],
+      color: [c.pos, c.neg, c.neu],
+      textStyle: { color: c.ink, fontFamily: fontBody },
       tooltip: { trigger: 'item', formatter: '{b} {c} 条（{d}%）' },
-      legend: { bottom: 0 },
+      legend: { bottom: 0, textStyle: { color: c.soft } },
       series: [{
         type: 'pie',
         radius: ['44%', '70%'],
         avoidLabelOverlap: true,
-        itemStyle: { borderColor: '#fbf8f2', borderWidth: 2 },
-        label: { formatter: '{b}\n{d}%' },
+        itemStyle: { borderColor: c.surface, borderWidth: 2 },
+        label: { formatter: '{b}\n{d}%', color: c.ink },
         data: [
           { name: '正向', value: overview.pos },
           { name: '负向', value: overview.neg },
@@ -170,15 +192,27 @@ function render() {
     })
     const names = aspects.map((item) => item.name).reverse()
     barChart.setOption({
+      textStyle: { color: c.ink, fontFamily: fontBody },
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      legend: { bottom: 0 },
+      legend: { bottom: 0, textStyle: { color: c.soft } },
       grid: { left: 88, right: 16, top: 8, bottom: 36 },
-      yAxis: { type: 'category', data: names, axisTick: { show: false } },
-      xAxis: { type: 'value', minInterval: 1 },
+      yAxis: {
+        type: 'category',
+        data: names,
+        axisTick: { show: false },
+        axisLine: { lineStyle: { color: c.line } },
+        axisLabel: { color: c.soft },
+      },
+      xAxis: {
+        type: 'value',
+        minInterval: 1,
+        axisLabel: { color: c.soft },
+        splitLine: { lineStyle: { color: c.line } },
+      },
       series: [
-        { name: '正向', type: 'bar', stack: 'aspect', barWidth: 14, data: aspects.map((item) => item.pos).reverse(), itemStyle: { color: COLORS.pos } },
-        { name: '负向', type: 'bar', stack: 'aspect', data: aspects.map((item) => item.neg).reverse(), itemStyle: { color: COLORS.neg } },
-        { name: '中性', type: 'bar', stack: 'aspect', data: aspects.map((item) => item.neu).reverse(), itemStyle: { color: COLORS.neu } },
+        { name: '正向', type: 'bar', stack: 'aspect', barWidth: 14, data: aspects.map((item) => item.pos).reverse(), itemStyle: { color: c.pos } },
+        { name: '负向', type: 'bar', stack: 'aspect', data: aspects.map((item) => item.neg).reverse(), itemStyle: { color: c.neg } },
+        { name: '中性', type: 'bar', stack: 'aspect', data: aspects.map((item) => item.neu).reverse(), itemStyle: { color: c.neu } },
       ],
     }, true)
   } else if (barChart) {
@@ -189,15 +223,27 @@ function render() {
     trendChart = trendChart || api.init(trendEl.value)
     const labels = months.value.map((item) => monthLabel(item.label))
     trendChart.setOption({
+      textStyle: { color: c.ink, fontFamily: fontBody },
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      legend: { bottom: 0 },
+      legend: { bottom: 0, textStyle: { color: c.soft } },
       grid: { left: 48, right: 16, top: 8, bottom: 36 },
-      xAxis: { type: 'category', data: labels, axisTick: { show: false } },
-      yAxis: { type: 'value', minInterval: 1 },
+      xAxis: {
+        type: 'category',
+        data: labels,
+        axisTick: { show: false },
+        axisLine: { lineStyle: { color: c.line } },
+        axisLabel: { color: c.soft },
+      },
+      yAxis: {
+        type: 'value',
+        minInterval: 1,
+        axisLabel: { color: c.soft },
+        splitLine: { lineStyle: { color: c.line } },
+      },
       series: [
-        { name: '正向', type: 'bar', stack: 'month', barWidth: 18, data: months.value.map((item) => item.pos), itemStyle: { color: COLORS.pos } },
-        { name: '负向', type: 'bar', stack: 'month', data: months.value.map((item) => item.neg), itemStyle: { color: COLORS.neg } },
-        { name: '中性', type: 'bar', stack: 'month', data: months.value.map((item) => item.neu), itemStyle: { color: COLORS.neu } },
+        { name: '正向', type: 'bar', stack: 'month', barWidth: 18, data: months.value.map((item) => item.pos), itemStyle: { color: c.pos } },
+        { name: '负向', type: 'bar', stack: 'month', data: months.value.map((item) => item.neg), itemStyle: { color: c.neg } },
+        { name: '中性', type: 'bar', stack: 'month', data: months.value.map((item) => item.neu), itemStyle: { color: c.neu } },
       ],
     }, true)
   } else if (trendChart) {
@@ -230,6 +276,11 @@ function onResize() {
 }
 
 watch(() => props.overview, () => refresh(), { deep: true })
+// 换主题后重画，图表颜色与文字跟着 token 变
+watch(() => theme.current, async () => {
+  await nextTick()
+  if (echartsApi() && pieChart) render()
+})
 onMounted(() => {
   refresh()
   window.addEventListener('resize', onResize)

@@ -13,7 +13,8 @@
     <el-container>
       <el-header class="app-header">
         <span class="muted">工作台</span>
-        <div>
+        <div class="head-actions">
+          <ThemeSwitch />
           <el-button v-if="auth.isAdmin" text @click="router.push('/admin/users')">系统管理</el-button>
           <span class="user">{{ auth.user?.displayName }}</span>
           <el-button text @click="pwdVisible = true">修改密码</el-button>
@@ -42,6 +43,7 @@ import { useAuthStore } from '@/stores/auth'
 import http from '@/api/http'
 import AskDock from '@/components/AskDock.vue'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
+import ThemeSwitch from '@/components/ThemeSwitch.vue'
 
 const route = useRoute()
 const router = useRouter()

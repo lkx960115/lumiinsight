@@ -17,7 +17,8 @@
     <el-container>
       <el-header class="app-header">
         <span class="muted">系统设置</span>
-        <div>
+        <div class="head-actions">
+          <ThemeSwitch />
           <el-button text @click="router.push('/app/projects')">返回工作台</el-button>
           <span class="user">{{ auth.user?.displayName }}</span>
           <el-button text @click="pwdVisible = true">修改密码</el-button>
@@ -44,6 +45,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import http from '@/api/http'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
+import ThemeSwitch from '@/components/ThemeSwitch.vue'
 
 const route = useRoute()
 const router = useRouter()

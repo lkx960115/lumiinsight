@@ -6,7 +6,12 @@ import 'element-plus/dist/index.css'
 import App from './App.vue'
 import router from './router'
 import { permission } from './directives/permission'
+import { applyTheme, readStoredTheme } from './stores/theme'
+import './assets/theme.css'
 import './assets/main.css'
+
+// 挂载前先定主题，避免白底闪一下再变深色
+applyTheme(readStoredTheme())
 
 const app = createApp(App)
 app.use(createPinia())

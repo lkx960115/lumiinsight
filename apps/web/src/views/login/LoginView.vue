@@ -1,5 +1,6 @@
 <template>
   <div class="login-page">
+    <ThemeSwitch variant="floating" />
     <div class="login-stage">
       <p class="login-mark">灯鉴</p>
       <h1>登录工作台</h1>
@@ -23,6 +24,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import ThemeSwitch from '@/components/ThemeSwitch.vue'
 
 const username = ref('admin')
 const password = ref('')
