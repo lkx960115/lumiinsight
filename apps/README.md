@@ -1,3 +1,9 @@
 # apps
 
-业务代码从实施计划 **W1（09-15 起）** 再写。今日仅占位，保证目录会进 Git。
+| 目录 | 说明 |
+|------|------|
+| `server` | Spring Boot 3.3.5：登录、导入、模型配置、调 Worker |
+| `web` | Vue3 工作台 `/app` 与管理端 `/admin` |
+| `ai-worker` | 清洗去重/广告/过短/脱敏，端口 8090 |
+
+本地：`./scripts/compose-up.sh`（MySQL 映射 3307，国内镜像）→ Java → Worker → `pnpm -C apps/web dev`。

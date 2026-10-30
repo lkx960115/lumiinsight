@@ -7,7 +7,7 @@
 | 工作台 + 管理端 UI | `apps/web` `/app` 与 `/admin` |
 | 用户登录、RBAC、项目、导入 | `apps/server` |
 | 多模型配置与调用路由 | `apps/server` + Worker 客户端 |
-| 清洗 / ABSA / 向量 | `apps/ai-worker` |
+| 清洗 / ABSA / 向量 / 问原评 / 预警说明 | `apps/ai-worker` |
 | Agent 文档 | `docs/ai` |
 
 ## 2. 本仓不负责
@@ -15,7 +15,7 @@
 | 能力 | 说明 |
 |------|------|
 | 公司 OGSM / OTM / MCP | 在 `ogsmProject`，禁止把灯鉴做成其子模块 |
-| 四平台真实采集 | 仅接口占位 |
+| 四平台真实采集 | 仅接口占位。导入认商家后台导出列名，不算拉取 |
 | SSO / 飞书登录 | MVP 不做 |
 | 生产 Linux 运维 | 后置 |
 

@@ -1,0 +1,355 @@
+/* ============================================================
+   三套界面方向：A 静数据 / B 纸鉴 / C 暗房
+   正本：design/ui-directions/switch.html
+   本文件只放设计 token 与 Element Plus 变量映射，不放布局。
+   页面样式一律写 main.css，且只能引用这里的变量。
+   ============================================================ */
+
+/* 默认（无 data-theme 时）等同 B 纸鉴，保证首屏不闪 */
+:root,
+[data-theme='b'] {
+  color-scheme: light;
+
+  --bg: #efe9dd;
+  --paper: var(--bg);
+  --surface: #fdfbf6;
+  --surface-2: #f7f2e8;
+  --line: rgba(27, 42, 37, 0.14);
+  --line-soft: rgba(27, 42, 37, 0.08);
+  --line-strong: rgba(27, 42, 37, 0.24);
+
+  --ink: #1b2a25;
+  --ink-2: #3f4f49;
+  --ink-soft: #6f7c74;
+  --soft: var(--ink-soft);
+
+  --accent: #1f6a56;
+  --accent-hover: #185445;
+  --accent-wash: #e8f0ec;
+  --on-accent: #fdfbf6;
+
+  --pos: #1f6a56;
+  --neg: #b0402f;
+  --warn: #a8721c;
+  --pos-wash: #e7efe9;
+  --neg-wash: #f6ebe6;
+  --warn-wash: #f7f0e1;
+
+  --aside: #12211c;
+  --aside-ink: #b9c6bf;
+  --aside-soft: #7f8f88;
+  --aside-line: rgba(255, 255, 255, 0.09);
+  --aside-on-bg: rgba(255, 255, 255, 0.07);
+  --aside-on: #f3eee2;
+
+  --topbar-bg: rgba(239, 233, 221, 0.86);
+  --topbar-line: rgba(27, 42, 37, 0.08);
+  --th-bg: #f7f2e8;
+  --row-hover: rgba(31, 106, 86, 0.04);
+
+  --rail-bg: #12211c;
+  --rail-ink: #f3eee2;
+  --rail-hover: #1a2e28;
+  --bubble-bg: #12211c;
+  --bubble-ink: #f3eee2;
+
+  --shadow-card: none;
+  --shadow-pop: 0 10px 34px rgba(20, 26, 34, 0.14);
+  --radius: 6px;
+  --radius-sm: 3px;
+  --body-texture: radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.5), transparent 48%),
+    radial-gradient(circle at 84% 90%, rgba(255, 255, 255, 0.3), transparent 54%);
+
+  --font-head: 'Songti SC', 'Source Han Serif SC', 'Noto Serif SC', Georgia, serif;
+  --font-body: -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --tracking-head: 0.01em;
+
+  --login-bg: radial-gradient(1100px 520px at 78% -12%, rgba(31, 106, 86, 0.34), transparent 62%), #12211c;
+
+  /* Element Plus 变量映射 */
+  --el-color-primary: #1f6a56;
+  --el-color-primary-dark-2: #185445;
+  --el-color-primary-light-3: #4a8f7d;
+  --el-color-primary-light-5: #7aada0;
+  --el-color-primary-light-7: #b3d1c8;
+  --el-color-primary-light-8: #cde0db;
+  --el-color-primary-light-9: #e6f0ed;
+  --el-color-success: #1f6a56;
+  --el-color-success-light-9: #e7efe9;
+  --el-color-danger: #b0402f;
+  --el-color-danger-light-9: #f6ebe6;
+  --el-color-error: #b0402f;
+  --el-color-error-light-9: #f6ebe6;
+  --el-color-warning: #a8721c;
+  --el-color-warning-light-9: #f7f0e1;
+  --el-color-info: #6f7c74;
+  --el-color-info-light-9: #efebe2;
+  --el-text-color-primary: #1b2a25;
+  --el-text-color-regular: #3f4f49;
+  --el-text-color-secondary: #6f7c74;
+  --el-text-color-placeholder: #93a09a;
+  --el-text-color-disabled: #a9b3ad;
+  --el-bg-color: #fdfbf6;
+  --el-bg-color-page: #efe9dd;
+  --el-bg-color-overlay: #fdfbf6;
+  --el-fill-color: #f7f2e8;
+  --el-fill-color-blank: #fdfbf6;
+  --el-fill-color-light: #f7f2e8;
+  --el-fill-color-lighter: #faf6ee;
+  --el-fill-color-extra-light: #fcf9f3;
+  --el-fill-color-dark: #eee7d9;
+  --el-border-color: rgba(27, 42, 37, 0.16);
+  --el-border-color-light: rgba(27, 42, 37, 0.12);
+  --el-border-color-lighter: rgba(27, 42, 37, 0.08);
+  --el-border-color-extra-light: rgba(27, 42, 37, 0.05);
+  --el-border-color-hover: rgba(27, 42, 37, 0.3);
+  --el-border-color-darker: rgba(27, 42, 37, 0.4);
+  --el-mask-color: rgba(250, 247, 240, 0.78);
+  --el-mask-color-extra-light: rgba(250, 247, 240, 0.35);
+  --el-overlay-color-lighter: rgba(18, 33, 28, 0.55);
+  --el-box-shadow-light: 0 10px 30px rgba(20, 36, 31, 0.1);
+  --el-border-radius-base: 4px;
+  --el-border-radius-small: 3px;
+  --el-font-family: var(--font-body);
+}
+
+/* ---------- A 静数据：白底蓝调，密度优先 ---------- */
+[data-theme='a'] {
+  color-scheme: light;
+
+  --bg: #f5f6f9;
+  --paper: var(--bg);
+  --surface: #ffffff;
+  --surface-2: #fafbfd;
+  --line: #e4e7ee;
+  --line-soft: #eef1f6;
+  --line-strong: #d5dae2;
+
+  --ink: #141c26;
+  --ink-2: #3c4a5a;
+  --ink-soft: #6b7889;
+  --soft: var(--ink-soft);
+
+  --accent: #2b57d6;
+  --accent-hover: #1f45b4;
+  --accent-wash: #eef3ff;
+  --on-accent: #ffffff;
+
+  --pos: #0f8a5f;
+  --neg: #cf4141;
+  --warn: #c47a12;
+  --pos-wash: #e9f6ef;
+  --neg-wash: #fceeee;
+  --warn-wash: #fbf2e2;
+
+  --aside: #ffffff;
+  --aside-ink: #3c4a5a;
+  --aside-soft: #8c97a6;
+  --aside-line: #e4e7ee;
+  --aside-on-bg: #eef3ff;
+  --aside-on: #2b57d6;
+
+  --topbar-bg: #ffffff;
+  --topbar-line: #e4e7ee;
+  --th-bg: #fafbfc;
+  --row-hover: #f3f6fd;
+
+  --rail-bg: #141c26;
+  --rail-ink: #ffffff;
+  --rail-hover: #22303f;
+  --bubble-bg: #141c26;
+  --bubble-ink: #ffffff;
+
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-pop: 0 10px 34px rgba(16, 24, 40, 0.14);
+  --radius: 8px;
+  --radius-sm: 5px;
+  --body-texture: none;
+
+  --font-head: -apple-system, 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-body: -apple-system, 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --tracking-head: -0.01em;
+
+  --login-bg: radial-gradient(900px 520px at 82% -10%, rgba(74, 110, 232, 0.32), transparent 60%), #101a2c;
+
+  --el-color-primary: #2b57d6;
+  --el-color-primary-dark-2: #1f45b4;
+  --el-color-primary-light-3: #5f81e2;
+  --el-color-primary-light-5: #95abec;
+  --el-color-primary-light-7: #c3d0f6;
+  --el-color-primary-light-8: #dbe3fa;
+  --el-color-primary-light-9: #eef3ff;
+  --el-color-success: #0f8a5f;
+  --el-color-success-light-9: #e9f6ef;
+  --el-color-danger: #cf4141;
+  --el-color-danger-light-9: #fceeee;
+  --el-color-error: #cf4141;
+  --el-color-error-light-9: #fceeee;
+  --el-color-warning: #c47a12;
+  --el-color-warning-light-9: #fbf2e2;
+  --el-color-info: #6b7889;
+  --el-color-info-light-9: #f0f2f6;
+  --el-text-color-primary: #141c26;
+  --el-text-color-regular: #3c4a5a;
+  --el-text-color-secondary: #6b7889;
+  --el-text-color-placeholder: #98a2b0;
+  --el-text-color-disabled: #b4bcc7;
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #f5f6f9;
+  --el-bg-color-overlay: #ffffff;
+  --el-fill-color: #f4f6fa;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #f6f8fb;
+  --el-fill-color-lighter: #fafbfd;
+  --el-fill-color-extra-light: #fcfdff;
+  --el-fill-color-dark: #eef1f6;
+  --el-border-color: #dfe4eb;
+  --el-border-color-light: #e6eaf0;
+  --el-border-color-lighter: #eef1f6;
+  --el-border-color-extra-light: #f4f6fa;
+  --el-border-color-hover: #c6cedb;
+  --el-border-color-darker: #b6c0ce;
+  --el-mask-color: rgba(255, 255, 255, 0.8);
+  --el-mask-color-extra-light: rgba(255, 255, 255, 0.4);
+  --el-overlay-color-lighter: rgba(16, 24, 40, 0.45);
+  --el-box-shadow-light: 0 8px 24px rgba(16, 24, 40, 0.08);
+  --el-border-radius-base: 6px;
+  --el-border-radius-small: 5px;
+  --el-font-family: var(--font-body);
+}
+
+/* ---------- C 暗房：深色暖橙，长时间看数 ---------- */
+[data-theme='c'] {
+  color-scheme: dark;
+
+  --bg: #0e1114;
+  --paper: var(--bg);
+  --surface: #181d22;
+  --surface-2: #1e242b;
+  --line: #282f37;
+  --line-soft: #222932;
+  --line-strong: #39434e;
+
+  --ink: #e9eef4;
+  --ink-2: #b3bfcc;
+  --ink-soft: #7d8b9b;
+  --soft: var(--ink-soft);
+
+  --accent: #f0a35e;
+  --accent-hover: #d8893f;
+  --accent-wash: rgba(240, 163, 94, 0.12);
+  --on-accent: #20160a;
+
+  --pos: #5fd8ac;
+  --neg: #ff7f6e;
+  --warn: #f0a35e;
+  --pos-wash: rgba(95, 216, 172, 0.1);
+  --neg-wash: rgba(255, 127, 110, 0.1);
+  --warn-wash: rgba(240, 163, 94, 0.1);
+
+  --aside: #12161a;
+  --aside-ink: #8b98a7;
+  --aside-soft: #5b6a7a;
+  --aside-line: #222932;
+  --aside-on-bg: #1e242b;
+  --aside-on: #f0a35e;
+
+  --topbar-bg: rgba(18, 22, 26, 0.88);
+  --topbar-line: #222932;
+  --th-bg: #12161a;
+  --row-hover: #1e242b;
+
+  --rail-bg: #f0a35e;
+  --rail-ink: #1a1206;
+  --rail-hover: #f5b479;
+  --bubble-bg: #1e242b;
+  --bubble-ink: #e9eef4;
+
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --shadow-pop: 0 18px 44px rgba(0, 0, 0, 0.55);
+  --radius: 10px;
+  --radius-sm: 7px;
+  --body-texture: radial-gradient(90% 70% at 12% 0%, rgba(240, 163, 94, 0.06), transparent 58%);
+
+  --font-head: -apple-system, 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-body: -apple-system, 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --tracking-head: -0.01em;
+
+  --login-bg: radial-gradient(900px 520px at 18% 6%, rgba(240, 163, 94, 0.16), transparent 60%), #0b0e10;
+
+  --el-color-primary: #f0a35e;
+  --el-color-primary-dark-2: #d8893f;
+  --el-color-primary-light-3: #f5b479;
+  --el-color-primary-light-5: #b98252;
+  --el-color-primary-light-7: #5c452f;
+  --el-color-primary-light-8: #3d2f21;
+  --el-color-primary-light-9: #2a2118;
+  --el-color-success: #5fd8ac;
+  --el-color-success-light-9: #16291f;
+  --el-color-danger: #ff7f6e;
+  --el-color-danger-light-9: #2c1b19;
+  --el-color-error: #ff7f6e;
+  --el-color-error-light-9: #2c1b19;
+  --el-color-warning: #f0a35e;
+  --el-color-warning-light-9: #2a2118;
+  --el-color-info: #7d8b9b;
+  --el-color-info-light-9: #1e242b;
+  --el-text-color-primary: #e9eef4;
+  --el-text-color-regular: #b3bfcc;
+  --el-text-color-secondary: #7d8b9b;
+  --el-text-color-placeholder: #647281;
+  --el-text-color-disabled: #4f5c69;
+  --el-bg-color: #181d22;
+  --el-bg-color-page: #0e1114;
+  --el-bg-color-overlay: #1e242b;
+  --el-fill-color: #1e242b;
+  --el-fill-color-blank: #181d22;
+  --el-fill-color-light: #1e242b;
+  --el-fill-color-lighter: #1b2127;
+  --el-fill-color-extra-light: #171c21;
+  --el-fill-color-dark: #242c34;
+  --el-border-color: #2c343d;
+  --el-border-color-light: #282f37;
+  --el-border-color-lighter: #232a32;
+  --el-border-color-extra-light: #1e242b;
+  --el-border-color-hover: #3d4854;
+  --el-border-color-darker: #4a5661;
+  --el-mask-color: rgba(10, 13, 16, 0.78);
+  --el-mask-color-extra-light: rgba(10, 13, 16, 0.4);
+  --el-overlay-color-lighter: rgba(0, 0, 0, 0.72);
+  --el-box-shadow-light: 0 0 16px rgba(0, 0, 0, 0.5);
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-font-family: var(--font-body);
+}
+
+/* 暗色部件在 C 下不要 Element 默认的白底残留 */
+[data-theme='c'] .el-popper.is-light,
+[data-theme='c'] .el-select__popper,
+[data-theme='c'] .el-picker-panel,
+[data-theme='c'] .el-dropdown-menu {
+  background: var(--el-bg-color-overlay);
+  border-color: var(--el-border-color-light);
+  color: var(--el-text-color-regular);
+}
+
+[data-theme='c'] .el-popper.is-light .el-popper__arrow::before {
+  background: var(--el-bg-color-overlay);
+  border-color: var(--el-border-color-light);
+}
+
+[data-theme='c'] .el-message-box {
+  background: var(--el-bg-color-overlay);
+  border-color: var(--el-border-color-light);
+}
+
+[data-theme='c'] .el-loading-mask {
+  background-color: rgba(14, 17, 20, 0.72);
+}
+
+[data-theme='c'] .el-switch__core {
+  border-color: var(--el-border-color-darker);
+}

@@ -1,0 +1,31 @@
+{"id": "cct-pos", "content": "色温刚好，暖光很舒服", "aspects": [{"name": "色温", "sentiment": "pos"}]}
+{"id": "cct-neg-cold", "content": "色温偏冷，希望有暖光档", "aspects": [{"name": "色温", "sentiment": "neg"}]}
+{"id": "cct-neg-yellow", "content": "色温偏黄，客厅显得闷", "aspects": [{"name": "色温", "sentiment": "neg"}]}
+{"id": "cct-neg-flicker-eye", "content": "色温更冷了，晚上刺眼", "aspects": [{"name": "色温", "sentiment": "neg"}]}
+{"id": "install-pos", "content": "安装说明清楚，自己搞定了", "aspects": [{"name": "安装", "sentiment": "pos"}]}
+{"id": "install-neg-manual", "content": "安装比演示那款麻烦，说明书看不懂", "aspects": [{"name": "安装", "sentiment": "neg"}]}
+{"id": "install-neg-hole", "content": "自己安装对不上孔位", "aspects": [{"name": "安装", "sentiment": "neg"}]}
+{"id": "flicker-pos", "content": "没有明显频闪，护眼还行", "aspects": [{"name": "频闪", "sentiment": "pos"}]}
+{"id": "flicker-neg", "content": "价格便宜但频闪明显", "aspects": [{"name": "频闪", "sentiment": "neg"}, {"name": "价格", "sentiment": "pos"}]}
+{"id": "service-pos", "content": "售后回复及时", "aspects": [{"name": "售后", "sentiment": "pos"}]}
+{"id": "service-neg", "content": "售后推诿，换货等了一周", "aspects": [{"name": "售后", "sentiment": "neg"}]}
+{"id": "look-pos", "content": "外观简约，和墙面挺搭", "aspects": [{"name": "外观", "sentiment": "pos"}]}
+{"id": "look-neg", "content": "外观更花哨，和墙面不太搭", "aspects": [{"name": "外观", "sentiment": "neg"}]}
+{"id": "pack-pos", "content": "物流有点慢，包装完好", "aspects": [{"name": "包装", "sentiment": "pos"}, {"name": "物流", "sentiment": "neg"}]}
+{"id": "pack-neg", "content": "包装简陋，灯罩有划痕", "aspects": [{"name": "包装", "sentiment": "neg"}]}
+{"id": "remote-neg", "content": "亮度够，就是遥控器难配对", "aspects": [{"name": "遥控", "sentiment": "neg"}]}
+{"id": "smart-neg", "content": "智能联动经常掉线，不如演示那款稳", "aspects": [{"name": "智能联动", "sentiment": "neg"}]}
+{"id": "bright-pos", "content": "亮度够用，客厅晚上很舒服", "aspects": [{"name": "亮度", "sentiment": "pos"}]}
+{"id": "bright-pos-bright", "content": "够亮，客厅晚上能看书", "aspects": [{"name": "亮度", "sentiment": "pos"}]}
+{"id": "bright-neg-dark", "content": "灯光太暗，客厅显得压抑", "aspects": [{"name": "亮度", "sentiment": "neg"}]}
+{"id": "bright-neg-dim", "content": "亮度暗了，晚上要再开台灯", "aspects": [{"name": "亮度", "sentiment": "neg"}]}
+{"id": "bright-neg-competitor", "content": "这款亮度太暗，不如演示吸顶灯", "aspects": [{"name": "亮度", "sentiment": "neg"}]}
+{"id": "look-pos-face", "content": "颜值在线，造型好看", "aspects": [{"name": "外观", "sentiment": "pos"}]}
+{"id": "look-neg-cheap", "content": "外观难看，廉价感很重", "aspects": [{"name": "外观", "sentiment": "neg"}]}
+{"id": "look-neg-ugly", "content": "外观有点丑，不如演示那款耐看", "aspects": [{"name": "外观", "sentiment": "neg"}]}
+{"id": "price-pos", "content": "价格实惠，性价比高", "aspects": [{"name": "价格", "sentiment": "pos"}]}
+{"id": "price-neg", "content": "价格太贵，不值这个钱", "aspects": [{"name": "价格", "sentiment": "neg"}]}
+{"id": "price-neg-competitor", "content": "比演示那款贵不少", "aspects": [{"name": "价格", "sentiment": "neg"}]}
+{"id": "log-pos", "content": "物流很快，隔天就到了", "aspects": [{"name": "物流", "sentiment": "pos"}]}
+{"id": "log-neg-slow", "content": "物流太慢，一直不更新", "aspects": [{"name": "物流", "sentiment": "neg"}]}
+{"id": "log-neg-damage", "content": "物流破损，外箱都凹了", "aspects": [{"name": "物流", "sentiment": "neg"}]}

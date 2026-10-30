@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>灯鉴 LumiInsight</title>
+    <script>
+      // 首屏前定主题：三套方向 a 静数据 / b 纸鉴 / c 暗房
+      (function () {
+        try {
+          var fromUrl = new URLSearchParams(location.search).get('theme')
+          var saved = localStorage.getItem('lumi-theme')
+          var theme = fromUrl || saved
+          if (theme !== 'a' && theme !== 'b' && theme !== 'c') theme = 'b'
+          document.documentElement.dataset.theme = theme
+          document.documentElement.style.colorScheme = theme === 'c' ? 'dark' : 'light'
+        } catch (e) {
+          document.documentElement.dataset.theme = 'b'
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
